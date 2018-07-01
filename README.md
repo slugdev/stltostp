@@ -1,2 +1,2 @@
 # stltostp
-Convert a ascii stl file to STEP 
+Convert ascii stl files to STEP brep files
