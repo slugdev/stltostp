@@ -8,4 +8,4 @@ stltostp <stl_file> <step_file> \[ tol <value> \]
 BSD
 
 ## Windows Installer
-[stltostp-1.0.0-win64.msi](https://github.com/slugdev/stltostp/releases/)
+[stltostp-1.0.0-win64.msi](https://github.com/slugdev/stltostp/releases/download/v1.0/stltostp-1.0.0-win64.msi)
