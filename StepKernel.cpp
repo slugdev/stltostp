@@ -209,7 +209,7 @@ void StepKernel::write_step(std::string file_name)
 	stp_file.open(file_name);
 	if (!stp_file)
 		return;
-	std::string author = "showmsj";
+	std::string author = "slugdev";
 	std::string org = "org";
 		// header info
 	stp_file << "ISO-10303-21;\n";
