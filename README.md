@@ -1,5 +1,5 @@
 # stltostp
-Command line utility to convert ascii stl files to STEP brep files. The translation is a simple triangle to triangle conversion with a tolerance based merging of nodes and edges.
+Command line utility to convert ascii stl files to STEP (ISO 10303-21) files. The translation is a direct (no 3rd party libraries such as OpenCascade) triangle to triangle conversion with a tolerance based merging of nodes and edges.
 
 ### Usage
 stltostp <stl_file> <step_file> \[ tol \<value\> \]
