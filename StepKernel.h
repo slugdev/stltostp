@@ -744,7 +744,7 @@ public:
 
 	StepKernel::EdgeCurve* create_edge_curve(StepKernel::Vertex * vert1, StepKernel::Vertex * vert2, bool dir);
 
-	void build_tri_body(std::vector<double> tris, double tol);
+	void build_tri_body(std::vector<double> tris, double tol, int &merged_edge_cnt);
 	void get_edge_from_map(
 		double  p0[3],
 		double  p1[3],
@@ -752,7 +752,8 @@ public:
 		StepKernel::Vertex * vert1,
 		StepKernel::Vertex * vert2,
 		EdgeCurve *& edge_curve,
-		bool &edge_dir);
+		bool &edge_dir,
+		int &merge_cnt);
 	void write_step(std::string file_name);
 	std::string StepKernel::read_line(std::ifstream &stp_file, bool skip_all_space);
 	void read_step(std::string file_name);

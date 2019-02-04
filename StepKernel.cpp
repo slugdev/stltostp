@@ -61,7 +61,7 @@ StepKernel::EdgeCurve* StepKernel::create_edge_curve(StepKernel::Vertex * vert1,
 	return new EdgeCurve(entities, vert1, vert2, surf_curve1, dir);
 }
 
-void StepKernel::build_tri_body(std::vector<double> tris,double tol)
+void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged_edge_cnt)
 {
 	auto point = new Point(entities, 0.0, 0.0, 0.0);
 	auto dir_1 = new Direction(entities, 0.0, 0.0, 1.0);
@@ -130,15 +130,15 @@ void StepKernel::build_tri_body(std::vector<double> tris,double tol)
 
 		EdgeCurve* edge_curve1 = 0;
 		bool edge1_dir = true;
-		get_edge_from_map(p0, p1, edge_map, vert1, vert2, edge_curve1, edge1_dir);
+		get_edge_from_map(p0, p1, edge_map, vert1, vert2, edge_curve1, edge1_dir, merged_edge_cnt);
 
 		EdgeCurve* edge_curve2 = 0;
 		bool edge2_dir = true;
-		get_edge_from_map(p1, p2, edge_map, vert2, vert3, edge_curve2, edge2_dir);
+		get_edge_from_map(p1, p2, edge_map, vert2, vert3, edge_curve2, edge2_dir, merged_edge_cnt);
 
 		EdgeCurve* edge_curve3 = 0;
 		bool edge3_dir = true;
-		get_edge_from_map(p2, p0, edge_map, vert3, vert1, edge_curve3, edge3_dir);
+		get_edge_from_map(p2, p0, edge_map, vert3, vert1, edge_curve3, edge3_dir, merged_edge_cnt);
 
 		std::vector<OrientedEdge*> oriented_edges;
 		oriented_edges.push_back(new OrientedEdge(entities, edge_curve1, edge1_dir));
@@ -175,7 +175,8 @@ void StepKernel::get_edge_from_map(
 	StepKernel::Vertex * vert1, 
 	StepKernel::Vertex * vert2,
 	EdgeCurve *& edge_curve,
-	bool &edge_dir)
+	bool &edge_dir,
+	int &merge_cnt)
 {
 	edge_curve = 0;
 	edge_dir = true;
@@ -185,11 +186,13 @@ void StepKernel::get_edge_from_map(
 	{
 		edge_curve = edge_map[edge_tuple1_f];
 		edge_dir = true;
+		merge_cnt++;
 	}
 	else if (edge_map.count(edge_tuple1_r))
 	{
 		edge_curve = edge_map[edge_tuple1_r];
 		edge_dir = false;
+		merge_cnt++;
 	}
 	if (!edge_curve)
 	{
