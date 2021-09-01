@@ -41,7 +41,7 @@ public:
 		Entity(std::vector<Entity*> &ent_list)
 		{
 			ent_list.push_back(this);
-			id = ent_list.size();
+			id = int(ent_list.size());
 		}
 		virtual ~Entity()
 		{}

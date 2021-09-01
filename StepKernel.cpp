@@ -70,7 +70,7 @@ void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged
 	auto base_csys = new Csys3D(entities, dir_1, dir_2, point);
 	std::vector<Face*> faces;
 	std::map<std::tuple<double, double, double, double, double, double>, EdgeCurve*> edge_map;
-	for (int i = 0; i < tris.size() / 9; i++)
+	for (std::size_t i = 0; i < tris.size() / 9; i++)
 	{
 		double p0[3] = { tris[i * 9 + 0],tris[i * 9 + 1] ,tris[i * 9 + 2] };
 		double p1[3] = { tris[i * 9 + 3],tris[i * 9 + 4] ,tris[i * 9 + 5] };
@@ -295,7 +295,7 @@ void StepKernel::read_step(std::string file_name)
 			auto id_str = cur_str.substr(1, equal_pos - 1);
 			id = std::atoi(id_str.c_str());
 			auto func_start = cur_str.find_first_not_of("\t ", equal_pos+1);
-			auto func_end = cur_str.find_first_of('\t (', equal_pos + 1);
+			auto func_end = cur_str.find_first_of("\t(", equal_pos + 1);
 			auto func_name = cur_str.substr(func_start, func_end - func_start);
 
 			// now parse the args

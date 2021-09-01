@@ -59,8 +59,8 @@ std::vector<double> read_stl_binary(std::string file_name)
 
 	uint32_t tris = 0;
 	file.read((char*)(&tris),sizeof(uint32_t));
-	nodes.resize(tris * 9);
-	for (int i = 0; i < tris; i++)
+	nodes.resize(std::size_t(tris) * 9);
+	for (std::size_t i = 0; i < tris; i++)
 	{
 		float_t  n[3], pts[9];
 		uint16_t att;
@@ -112,7 +112,7 @@ std::vector<double> read_stl(std::string file_name)
 		return nodes;
 	}
 
-	int file_size = file_test.tellg();
+	auto file_size = file_test.tellg();
 	file_test.close();
 
 	// The minimum size of an empty ASCII file is 15 bytes.
