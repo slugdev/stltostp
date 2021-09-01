@@ -98,7 +98,7 @@ void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged
 		d1[1] = d1[1] / dist1;
 		d1[2] = d1[2] / dist1;
 
-		// now cross 
+		// now cross
 		// cross to get the thrid direction for the beam csys
 		double d2[3] = { d0[1] * d1[2] - d0[2] * d1[1], d0[2] * d1[0] - d0[0] * d1[2], d0[0] * d1[1] - d0[1] * d1[0] };
 		double dist2 = sqrt(d2[0] * d2[0] + d2[1] * d2[1] + d2[2] * d2[2]);
@@ -172,7 +172,7 @@ void StepKernel::get_edge_from_map(
 	double  p0[3],
 	double  p1[3],
 	std::map<std::tuple<double, double, double, double, double, double>, StepKernel::EdgeCurve *> &edge_map,
-	StepKernel::Vertex * vert1, 
+	StepKernel::Vertex * vert1,
 	StepKernel::Vertex * vert2,
 	EdgeCurve *& edge_curve,
 	bool &edge_dir,
@@ -295,7 +295,7 @@ void StepKernel::read_step(std::string file_name)
 			auto id_str = cur_str.substr(1, equal_pos - 1);
 			id = std::atoi(id_str.c_str());
 			auto func_start = cur_str.find_first_not_of("\t ", equal_pos+1);
-			auto func_end = cur_str.find_first_of("\t(", equal_pos + 1);
+			auto func_end = cur_str.find_first_of("\t (", equal_pos + 1);
 			auto func_name = cur_str.substr(func_start, func_end - func_start);
 
 			// now parse the args
