@@ -6,6 +6,13 @@ Command line utility to convert stl files to STEP (ISO 10303-21) files. The tran
 stltostp <stl_file> <step_file> \[ tol \<value\> \]
 ![Image of stltostp usage](https://github.com/slugdev/stltostp/blob/master/doc/example.jpg)
 
+### Build
+```
+mkdir build
+cd build
+cmake ..
+make clean all && sudo make install
+```
 ### License 
 BSD
 
