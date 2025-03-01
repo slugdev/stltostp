@@ -295,7 +295,7 @@ void StepKernel::read_step(std::string file_name)
 			auto id_str = cur_str.substr(1, equal_pos - 1);
 			id = std::atoi(id_str.c_str());
 			auto func_start = cur_str.find_first_not_of("\t ", equal_pos+1);
-			auto func_end = cur_str.find_first_of("\t (", equal_pos + 1);
+			auto func_end = cur_str.find_first_of("\t (", func_start + 1);
 			auto func_name = cur_str.substr(func_start, func_end - func_start);
 
 			// now parse the args
