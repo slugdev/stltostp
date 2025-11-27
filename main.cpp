@@ -182,7 +182,7 @@ int main(int arv, char* argc[])
 		}
 		else
 		{
-			if (cur_arg == "units" || cur_arg == "--units" || cur_arg == "unit")
+			if (cur_arg == "units")
 			{
 				if (arg_cnt + 1 < arv)
 				{
@@ -196,7 +196,7 @@ int main(int arv, char* argc[])
 					return 1;
 				}
 			}
-			else if (cur_arg == "schema" || cur_arg == "--schema" || cur_arg == "format")
+			else if (cur_arg == "schema")
 			{
 				if (arg_cnt + 1 < arv)
 				{
