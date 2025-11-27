@@ -1,10 +1,112 @@
 build/
 CMakeCache.txt
 CMakeFiles/
-CTestTestfile.cmake
-Makefile
+# CMake build artifacts
+build/
+Build/
+BUILD/
+cmake_build/
+out/
+dist/
+
+# CMake cache and configuration files
+CMakeCache.txt
+CMakeFiles/
 cmake_install.cmake
+CTestTestfile.cmake
+*.cmake
+
+# Build outputs
+Makefile
 install_manifest.txt
-stltostp
-*.exe
+
+# Compiled binaries and objects
 *.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.exe.manifest
+
+# Static and shared library outputs
+stltostp
+stltostp.exe
+stltostp.app
+
+# Testing artifacts
+ctest_tmp/
+Testing/
+*.test
+
+# IDE and editor files
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.DS_Store
+Thumbs.db
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# OS-specific files
+.DS_Store
+Desktop.ini
+Thumbs.db
+$RECYCLE.BIN/
+.AppleDouble
+.LSOverride
+
+# Build system artifacts (make, ninja, etc.)
+.ninja_deps
+.ninja_log
+
+# Temporary/debug files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# Documentation build artifacts
+doc/_build/
+docs/_build/
+site/
+htmlcov/
+
+# Package managers
+*.vcxproj.user
+*.user
+*.sln
+
+# STEP/STL test output files (if generated during testing)
+*.stp
+test/*.stp
+test/output*
+
+# Profiling and coverage reports
+*.gcov
+*.gcda
+*.gcno
+coverage/
+*.profdata
+
+# Compiled Python files (if any scripting is added)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Dependency/package management
+.venv/
+venv/
+node_modules/

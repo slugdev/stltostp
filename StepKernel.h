@@ -756,7 +756,7 @@ public:
 		EdgeCurve *& edge_curve,
 		bool &edge_dir,
 		int &merge_cnt);
-	void write_step(std::string file_name);
+	void write_step(std::string file_name, const std::string &unit = "mm", const std::string &schema = "203");
 	std::string read_line(std::ifstream &stp_file, bool skip_all_space);
 	void read_step(std::string file_name);
 	std::vector<Entity*> entities;
