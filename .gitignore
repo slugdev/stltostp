@@ -1,3 +1,9 @@
+# STEP/STL test output files (if generated during testing)
+test/output*.stp
+
+# Log files
+*.log
+logs/
 build/
 CMakeCache.txt
 CMakeFiles/
