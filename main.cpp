@@ -230,7 +230,7 @@ int main(int arv, char* argc[])
 
 	StepKernel se;
 	int merged_edge_cnt = 0;
-	se.build_tri_body(nodes,tol,merged_edge_cnt);
+	se.build_tri_body(nodes,tol,merged_edge_cnt, mergeplanar);
 	se.write_step(output_file, out_units, out_schema);
 	std::cout << "Merged " << merged_edge_cnt << " edges\n";
 	std::cout << "Exported STEP file: " << output_file << "\n";

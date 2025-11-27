@@ -746,7 +746,7 @@ public:
 
 	StepKernel::EdgeCurve* create_edge_curve(StepKernel::Vertex * vert1, StepKernel::Vertex * vert2, bool dir);
 
-	void build_tri_body(std::vector<double> tris, double tol, int &merged_edge_cnt);
+	void build_tri_body(std::vector<double> tris, double tol, int &merged_edge_cnt, bool merge_coplanar = false);
 	void get_edge_from_map(
 		double  p0[3],
 		double  p1[3],

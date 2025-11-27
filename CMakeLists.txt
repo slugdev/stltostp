@@ -35,14 +35,20 @@ ADD_TEST(
 )
 
 ADD_TEST(
-	NAME cat_dish_214
-	COMMAND stltostp cat_dish.stl cat_dish_214.stp schema 214
+	NAME single_tri
+	COMMAND stltostp single_tri.stl single_tri.stp
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
 )
 
 ADD_TEST(
-	NAME single_tri
-	COMMAND stltostp single_tri.stl single_tri.stp
+	NAME cat_dish_merge
+	COMMAND stltostp cat_dish.stl cat_dish_merge.stp mergeplanar
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+)
+
+ADD_TEST(
+	NAME bucket_merge
+	COMMAND stltostp bucket.stl bucket_merged.stp mergeplanar
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
 )
 

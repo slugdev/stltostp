@@ -34,6 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include <map>
 #include <iomanip> // put_time
 #include <cctype>
+#include <set>
+
 StepKernel::StepKernel()
 {
 
@@ -62,7 +64,7 @@ StepKernel::EdgeCurve* StepKernel::create_edge_curve(StepKernel::Vertex * vert1,
 	return new EdgeCurve(entities, vert1, vert2, surf_curve1, dir);
 }
 
-void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged_edge_cnt)
+void StepKernel::build_tri_body(std::vector<double> tris, double tol, int &merged_edge_cnt, bool merge_coplanar)
 {
 	auto point = new Point(entities, 0.0, 0.0, 0.0);
 	auto dir_1 = new Direction(entities, 0.0, 0.0, 1.0);
@@ -70,95 +72,280 @@ void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged
 
 	auto base_csys = new Csys3D(entities, dir_1, dir_2, point);
 	std::vector<Face*> faces;
-	std::map<std::tuple<double, double, double, double, double, double>, EdgeCurve*> edge_map;
-	for (std::size_t i = 0; i < tris.size() / 9; i++)
+
+	// If merging is not requested, retain original behaviour: create one face per triangle
+	if (!merge_coplanar)
 	{
-		double p0[3] = { tris[i * 9 + 0],tris[i * 9 + 1] ,tris[i * 9 + 2] };
-		double p1[3] = { tris[i * 9 + 3],tris[i * 9 + 4] ,tris[i * 9 + 5] };
-		double p2[3] = { tris[i * 9 + 6],tris[i * 9 + 7] ,tris[i * 9 + 8] };
+		std::map<std::tuple<double, double, double, double, double, double>, EdgeCurve*> edge_map;
+		for (std::size_t i = 0; i < tris.size() / 9; i++)
+		{
+			double p0[3] = { tris[i * 9 + 0],tris[i * 9 + 1] ,tris[i * 9 + 2] };
+			double p1[3] = { tris[i * 9 + 3],tris[i * 9 + 4] ,tris[i * 9 + 5] };
+			double p2[3] = { tris[i * 9 + 6],tris[i * 9 + 7] ,tris[i * 9 + 8] };
 
-		double d0[3] = { 1,0,0 };
-		d0[0] = p1[0] - p0[0];
-		d0[1] = p1[1] - p0[1];
-		d0[2] = p1[2] - p0[2];
-		double dist0 = sqrt(d0[0] * d0[0] + d0[1] * d0[1] + d0[2] * d0[2]);
-		if (dist0 < tol)
+			double d0[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
+			double dist0 = sqrt(d0[0] * d0[0] + d0[1] * d0[1] + d0[2] * d0[2]);
+			if (dist0 < tol)
+				continue;
+			d0[0] /= dist0; d0[1] /= dist0; d0[2] /= dist0;
+
+			double d1[3] = { p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2] };
+			double dist1 = sqrt(d1[0] * d1[0] + d1[1] * d1[1] + d1[2] * d1[2]);
+			if (dist1 < tol)
+				continue;
+			d1[0] /= dist1; d1[1] /= dist1; d1[2] /= dist1;
+
+			double d2[3] = { d0[1] * d1[2] - d0[2] * d1[1], d0[2] * d1[0] - d0[0] * d1[2], d0[0] * d1[1] - d0[1] * d1[0] };
+			double dist2 = sqrt(d2[0] * d2[0] + d2[1] * d2[1] + d2[2] * d2[2]);
+			if (dist2 < tol)
+				continue;
+			d2[0] /= dist2; d2[1] /= dist2; d2[2] /= dist2;
+
+			// create points/verts
+			auto point1 = new Point(entities, p0[0], p0[1], p0[2]);
+			auto vert1 = new Vertex(entities, point1);
+			auto point2 = new Point(entities, p1[0], p1[1], p1[2]);
+			auto vert2 = new Vertex(entities, point2);
+			auto point3 = new Point(entities, p2[0], p2[1], p2[2]);
+			auto vert3 = new Vertex(entities, point3);
+
+			EdgeCurve* edge_curve1 = 0; bool edge1_dir = true;
+			get_edge_from_map(p0, p1, edge_map, vert1, vert2, edge_curve1, edge1_dir, merged_edge_cnt);
+			EdgeCurve* edge_curve2 = 0; bool edge2_dir = true;
+			get_edge_from_map(p1, p2, edge_map, vert2, vert3, edge_curve2, edge2_dir, merged_edge_cnt);
+			EdgeCurve* edge_curve3 = 0; bool edge3_dir = true;
+			get_edge_from_map(p2, p0, edge_map, vert3, vert1, edge_curve3, edge3_dir, merged_edge_cnt);
+
+			std::vector<OrientedEdge*> oriented_edges;
+			oriented_edges.push_back(new OrientedEdge(entities, edge_curve1, edge1_dir));
+			oriented_edges.push_back(new OrientedEdge(entities, edge_curve2, edge2_dir));
+			oriented_edges.push_back(new OrientedEdge(entities, edge_curve3, edge3_dir));
+
+			auto plane_point = new Point(entities, p0[0], p0[1], p0[2]);
+			auto plane_dir_1 = new Direction(entities, d2[0], d2[1], d2[2]);
+			auto plane_dir_2 = new Direction(entities, d0[0], d0[1], d0[2]);
+			auto plane_csys = new Csys3D(entities, plane_dir_1, plane_dir_2, plane_point);
+			auto plane = new Plane(entities, plane_csys);
+
+			auto edge_loop = new EdgeLoop(entities, oriented_edges);
+			std::vector<FaceBound*> face_bounds;
+			face_bounds.push_back(new FaceBound(entities, edge_loop, true));
+			faces.push_back(new Face(entities, face_bounds, plane, true));
+		}
+
+		// build the model
+		auto open_shell = new Shell(entities, faces);
+		std::vector<Shell*> shells;
+		shells.push_back(open_shell);
+		auto shell_model = new ShellModel(entities, shells);
+		auto manifold_shape = new ManifoldShape(entities, base_csys, shell_model);
+		return;
+	}
+
+	// Merging branch: group triangles by plane and create single planar faces for coplanar sets
+	struct Tri
+	{
+		double p0[3];
+		double p1[3];
+		double p2[3];
+		double nx, ny, nz; // normal
+		double d; // plane constant (dot(n, p0))
+	};
+
+	std::vector<Tri> tri_list;
+	tri_list.reserve(tris.size() / 9);
+	for (std::size_t i = 0; i < tris.size() / 9; ++i)
+	{
+		Tri t;
+		t.p0[0] = tris[i * 9 + 0]; t.p0[1] = tris[i * 9 + 1]; t.p0[2] = tris[i * 9 + 2];
+		t.p1[0] = tris[i * 9 + 3]; t.p1[1] = tris[i * 9 + 4]; t.p1[2] = tris[i * 9 + 5];
+		t.p2[0] = tris[i * 9 + 6]; t.p2[1] = tris[i * 9 + 7]; t.p2[2] = tris[i * 9 + 8];
+
+		double v0[3] = { t.p1[0] - t.p0[0], t.p1[1] - t.p0[1], t.p1[2] - t.p0[2] };
+		double v1[3] = { t.p2[0] - t.p0[0], t.p2[1] - t.p0[1], t.p2[2] - t.p0[2] };
+		double nx = v0[1] * v1[2] - v0[2] * v1[1];
+		double ny = v0[2] * v1[0] - v0[0] * v1[2];
+		double nz = v0[0] * v1[1] - v0[1] * v1[0];
+		double nlen = sqrt(nx * nx + ny * ny + nz * nz);
+		if (nlen < tol)
 			continue;
-		d0[0] = d0[0] / dist0;
-		d0[1] = d0[1] / dist0;
-		d0[2] = d0[2] / dist0;
+		nx /= nlen; ny /= nlen; nz /= nlen;
+		t.nx = nx; t.ny = ny; t.nz = nz;
+		t.d = nx * t.p0[0] + ny * t.p0[1] + nz * t.p0[2];
+		tri_list.push_back(t);
+	}
 
-		double d1[3] = { 1,0,0 };
-		d1[0] = p2[0] - p0[0];
-		d1[1] = p2[1] - p0[1];
-		d1[2] = p2[2] - p0[2];
-		double dist1 = sqrt(d1[0] * d1[0] + d1[1] * d1[1] + d1[2] * d1[2]);
-		if (dist1 < tol)
+	// Group triangles by similar plane (normal direction and plane constant)
+	std::vector<int> tri_group(tri_list.size(), -1);
+	std::vector<Tri> group_rep;
+	for (size_t i = 0; i < tri_list.size(); ++i)
+	{
+		bool found = false;
+		for (size_t g = 0; g < group_rep.size(); ++g)
+		{
+			double dot = tri_list[i].nx * group_rep[g].nx + tri_list[i].ny * group_rep[g].ny + tri_list[i].nz * group_rep[g].nz;
+			if (dot > 1.0 - 1e-6 && fabs(tri_list[i].d - group_rep[g].d) < tol)
+			{
+				tri_group[i] = int(g);
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+		{
+			tri_group[i] = int(group_rep.size());
+			group_rep.push_back(tri_list[i]);
+		}
+	}
+
+	// For each group, assemble boundary loops and create a single face
+	for (size_t g = 0; g < group_rep.size(); ++g)
+	{
+		// collect triangles in this group
+		std::vector<size_t> tris_in_group;
+		for (size_t i = 0; i < tri_list.size(); ++i)
+			if (tri_group[i] == int(g))
+				tris_in_group.push_back(i);
+		if (tris_in_group.empty())
 			continue;
-		d1[0] = d1[0] / dist1;
-		d1[1] = d1[1] / dist1;
-		d1[2] = d1[2] / dist1;
 
-		// now cross
-		// cross to get the thrid direction for the beam csys
-		double d2[3] = { d0[1] * d1[2] - d0[2] * d1[1], d0[2] * d1[0] - d0[0] * d1[2], d0[0] * d1[1] - d0[1] * d1[0] };
-		double dist2 = sqrt(d2[0] * d2[0] + d2[1] * d2[1] + d2[2] * d2[2]);
-		if (dist2 < tol)
-			continue;
-		d2[0] = d2[0] / dist2;
-		d2[1] = d2[1] / dist2;
-		d2[2] = d2[2] / dist2;
+		// map unique points to local indices
+		std::map<std::tuple<long long, long long, long long>, int> point_index;
+		std::vector<Point*> pts;
+		std::vector<Vertex*> verts;
+		auto quant = [&](double v)->long long { return llround(v / tol); };
 
-		// correct the m direction
-		double d1_cor[3] = { d2[1] * d0[2] - d2[2] * d0[1], d2[2] * d0[0] - d2[0] * d0[2], d2[0] * d0[1] - d2[1] * d0[0] };
-		double d1_cor_len = sqrt(d1_cor[0] * d1_cor[0] + d1_cor[1] * d1_cor[1] + d1_cor[2] * d1_cor[2]);
-		d1[0] = d1_cor[0] / d1_cor_len;
-		d1[1] = d1_cor[1] / d1_cor_len;
-		d1[2] = d1_cor[2] / d1_cor_len;
+		auto get_or_add_point = [&](double x, double y, double z)->int {
+			auto key = std::make_tuple(quant(x), quant(y), quant(z));
+			auto it = point_index.find(key);
+			if (it != point_index.end())
+				return it->second;
+			int idx = int(pts.size());
+			auto p = new Point(entities, x, y, z);
+			auto v = new Vertex(entities, p);
+			pts.push_back(p);
+			verts.push_back(v);
+			point_index[key] = idx;
+			return idx;
+		};
 
+		// edge occurrences: key is ordered pair (min,max) -> count and store the ordered occurrence
+		struct EdgeOcc { int a,b; int count; std::pair<int,int> last_orient; };
+		std::map<std::pair<int,int>, EdgeOcc> edge_occ;
 
-		// build the face
-		// the 3 vertex locations
-		auto point1 = new Point(entities, p0[0], p0[1], p0[2]);
-		auto vert1 = new Vertex(entities, point1);
+		// For each triangle, map to local indices and accumulate edges
+		for (auto ti : tris_in_group)
+		{
+			Tri &T = tri_list[ti];
+			int i0 = get_or_add_point(T.p0[0], T.p0[1], T.p0[2]);
+			int i1 = get_or_add_point(T.p1[0], T.p1[1], T.p1[2]);
+			int i2 = get_or_add_point(T.p2[0], T.p2[1], T.p2[2]);
+			std::pair<int,int> e0 = std::minmax(i0,i1);
+			std::pair<int,int> e1 = std::minmax(i1,i2);
+			std::pair<int,int> e2 = std::minmax(i2,i0);
+			auto upd = [&](std::pair<int,int> ek, int a, int b){
+				auto it = edge_occ.find(ek);
+				if (it == edge_occ.end())
+					edge_occ[ek] = EdgeOcc{ek.first, ek.second, 1, {a,b}};
+				else { it->second.count++; it->second.last_orient = {a,b}; }
+			};
+			upd(e0,i0,i1); upd(e1,i1,i2); upd(e2,i2,i0);
+		}
 
-		auto point2 = new Point(entities, p1[0], p1[1], p1[2]);
-		auto vert2 = new Vertex(entities, point2);
+		// boundary edges are those with count == 1
+		std::map<int, std::vector<int>> adj;
+		for (auto &kv : edge_occ)
+		{
+			if (kv.second.count == 1)
+			{
+				int a = kv.second.a; int b = kv.second.b;
+				adj[a].push_back(b);
+				adj[b].push_back(a);
+			}
+		}
 
-		auto point3 = new Point(entities, p2[0], p2[1], p2[2]);
-		auto vert3 = new Vertex(entities, point3);
+		// collect loops from adjacency
+		std::vector<std::vector<int>> loops;
+		std::set<int> visitedv;
+		for (auto &kv : adj)
+		{
+			int start = kv.first;
+			if (visitedv.count(start)) continue;
+			std::vector<int> loop;
+				int cur = start;
+				int prev = -1;
+				int steps = 0;
+				int max_steps = int(adj.size()) * 2 + 10;
+				while (true)
+				{
+					if (steps++ > max_steps)
+						break; // safety: bail out if traversal seems to loop forever
 
+					loop.push_back(cur);
+					visitedv.insert(cur);
+					auto &neighbors = adj[cur];
+					int next = -1;
+					// Prefer closing to start if present, otherwise pick an unvisited neighbor
+					for (int n : neighbors)
+					{
+						if (n == prev) continue;
+						if (n == start) { next = n; break; }
+						if (!visitedv.count(n)) { next = n; break; }
+					}
+					if (next == -1) break;
+					// If next would revisit an already-visited node (not the start), bail to avoid cycles
+					if (next != start && visitedv.count(next))
+						break;
+					prev = cur; cur = next;
+					if (cur == start) break;
+				}
+			if (loop.size() >= 3)
+				loops.push_back(loop);
+		}
 
-		EdgeCurve* edge_curve1 = 0;
-		bool edge1_dir = true;
-		get_edge_from_map(p0, p1, edge_map, vert1, vert2, edge_curve1, edge1_dir, merged_edge_cnt);
+		// For each loop, create edges and face
+		for (auto &loop : loops)
+		{
+			std::vector<OrientedEdge*> oriented_edges;
+			int L = int(loop.size());
+			for (int i = 0; i < L; ++i)
+			{
+				int a = loop[i];
+				int b = loop[(i+1)%L];
+				// create edge from a->b
+				EdgeCurve* ec = create_edge_curve(verts[a], verts[b], true);
+				oriented_edges.push_back(new OrientedEdge(entities, ec, true));
+			}
 
-		EdgeCurve* edge_curve2 = 0;
-		bool edge2_dir = true;
-		get_edge_from_map(p1, p2, edge_map, vert2, vert3, edge_curve2, edge2_dir, merged_edge_cnt);
+			// create a plane for the group using representative normal
+			Tri &R = group_rep[g];
+			double nx = R.nx, ny = R.ny, nz = R.nz;
+			// choose a tangent direction
+			double tx = 1.0, ty = 0.0, tz = 0.0;
+			// if normal is near x axis, pick y axis
+			if (fabs(nx*tx + ny*ty + nz*tz) > 0.9)
+			{
+				tx = 0.0; ty = 1.0; tz = 0.0;
+			}
+			// make two orthonormal directions in plane
+			double ux = ny*tz - nz*ty;
+			double uy = nz*tx - nx*tz;
+			double uz = nx*ty - ny*tx;
+			double ulen = sqrt(ux*ux + uy*uy + uz*uz);
+			if (ulen < 1e-12) { ux = 1; uy = 0; uz = 0; ulen = 1; }
+			ux /= ulen; uy /= ulen; uz /= ulen;
 
-		EdgeCurve* edge_curve3 = 0;
-		bool edge3_dir = true;
-		get_edge_from_map(p2, p0, edge_map, vert3, vert1, edge_curve3, edge3_dir, merged_edge_cnt);
+			auto plane_point = new Point(entities, pts[loop[0]]->x, pts[loop[0]]->y, pts[loop[0]]->z);
+			auto plane_dir_1 = new Direction(entities, nx, ny, nz);
+			auto plane_dir_2 = new Direction(entities, ux, uy, uz);
+			auto plane_csys = new Csys3D(entities, plane_dir_1, plane_dir_2, plane_point);
+			auto plane = new Plane(entities, plane_csys);
 
-		std::vector<OrientedEdge*> oriented_edges;
-		oriented_edges.push_back(new OrientedEdge(entities, edge_curve1, edge1_dir));
-		oriented_edges.push_back(new OrientedEdge(entities, edge_curve2, edge2_dir));
-		oriented_edges.push_back(new OrientedEdge(entities, edge_curve3, edge3_dir));
-
-		// create the plane
-		auto plane_point = new Point(entities, p0[0], p0[1], p0[2]);
-		auto plane_dir_1 = new Direction(entities, d2[0], d2[1], d2[2]);
-		auto plane_dir_2 = new Direction(entities, d0[0], d0[1], d0[2]);
-		auto plane_csys = new Csys3D(entities, plane_dir_1, plane_dir_2, plane_point);
-		auto plane = new Plane(entities, plane_csys);
-
-		// build the faces
-
-		auto edge_loop = new EdgeLoop(entities, oriented_edges);
-		std::vector<FaceBound*> face_bounds;
-		face_bounds.push_back(new FaceBound(entities, edge_loop, true));
-		faces.push_back(new Face(entities, face_bounds, plane, true));
+			auto edge_loop = new EdgeLoop(entities, oriented_edges);
+			std::vector<FaceBound*> face_bounds;
+			face_bounds.push_back(new FaceBound(entities, edge_loop, true));
+			faces.push_back(new Face(entities, face_bounds, plane, true));
+		}
 	}
 
 	// build the model
