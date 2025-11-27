@@ -23,6 +23,12 @@ ADD_TEST(
 )
 
 ADD_TEST(
+	NAME bucket_units
+	COMMAND stltostp bucket.stl bucket_inches.stp units in
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+)
+
+ADD_TEST(
 	NAME cat_dish_bin
 	COMMAND stltostp cat_dish_bin.stl cat_dish_bin.stp
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
