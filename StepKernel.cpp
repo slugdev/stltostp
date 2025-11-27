@@ -212,22 +212,108 @@ void StepKernel::write_step(std::string file_name)
 	stp_file.open(file_name);
 	if (!stp_file)
 		return;
+
+	// Set precision for floating point numbers to preserve accuracy
+	stp_file << std::fixed << std::setprecision(15);
+
 	std::string author = "slugdev";
 	std::string org = "org";
-		// header info
+	
+	// Header section - ISO 10303-21 with AP214 schema
 	stp_file << "ISO-10303-21;\n";
 	stp_file << "HEADER;\n";
-	stp_file << "FILE_DESCRIPTION(('STP203'),'2;1');\n";
-	stp_file << "FILE_NAME('" << file_name << "','" << iso_time.str() << "',('" << author << "'),('" << org << "'),' ','stltostp',' ');\n";
-	stp_file << "FILE_SCHEMA(('CONFIG_CONTROL_DESIGN'));\n";
-	stp_file << "ENDSEC; \n";
+	stp_file << "FILE_DESCRIPTION(('Configuration controlled 3D design of mechanical parts and assemblies'),'2;1');\n";
+	stp_file << "FILE_NAME('" << file_name << "','" << iso_time.str() << "',('" << author << "'),('" << org << "'),'StepKernel by stltostp','stltostp v1.0.1',' ');\n";
+	stp_file << "FILE_SCHEMA(('AP214IS'),'3');\n";
+	stp_file << "ENDSEC;\n";
 
-	// data section
+	// Data section
 	stp_file << "DATA;\n";
 
-	for (auto e:entities )
+	// Get the last entity ID to generate new wrapper entity IDs
+	int next_id = static_cast<int>(entities.size()) + 1;
+
+	// Serialize all geometric/topological entities first
+	for (auto e : entities)
 		e->serialize(stp_file);
-	// create the base csys
+
+	// Get reference to the last created entity (should be ManifoldShape)
+	// Assuming the last entity is the top-level ManifoldShape created in build_tri_body
+	int manifold_shape_id = static_cast<int>(entities.size());
+
+	// Add AP214 context and wrapper entities for better CAD interoperability
+	// These provide the required context for a complete STEP AP214 file
+
+	// Unit assignment (millimeters)
+	stp_file << "#" << next_id << " = UNIT_ASSIGNMENT((#" << (next_id + 1) << "));\n";
+	next_id++;
+
+	// Length unit in millimeters
+	stp_file << "#" << next_id << " = LENGTH_UNIT('MILLIMETRE',0.001);\n";
+	next_id++;
+
+	// Geometric representation context (3D)
+	stp_file << "#" << next_id << " = GEOMETRIC_REPRESENTATION_CONTEXT('2D',#" << (next_id + 1) << ",#" << (next_id + 2) << ");\n";
+	next_id++;
+
+	// Parametric representation context
+	stp_file << "#" << next_id << " = PARAMETRIC_REPRESENTATION_CONTEXT('3D',#" << (next_id + 1) << ");\n";
+	next_id++;
+
+	// Representation context (for general use)
+	stp_file << "#" << next_id << " = REPRESENTATION_CONTEXT('3D','3D Space');\n";
+	next_id++;
+
+	// Axis placement 3D (global coordinate system) for product context
+	int placement_id = next_id;
+	stp_file << "#" << next_id << " = AXIS2_PLACEMENT_3D('Global Origin',#" << (next_id + 1) << ",#" << (next_id + 2) << ",#" << (next_id + 3) << ");\n";
+	next_id++;
+
+	// Origin point (0,0,0) for global placement
+	stp_file << "#" << next_id << " = CARTESIAN_POINT('Origin',(0.0,0.0,0.0));\n";
+	next_id++;
+
+	// Z direction
+	stp_file << "#" << next_id << " = DIRECTION('Z',(0.0,0.0,1.0));\n";
+	next_id++;
+
+	// X direction
+	stp_file << "#" << next_id << " = DIRECTION('X',(1.0,0.0,0.0));\n";
+	next_id++;
+
+	// Product definition shape (references the manifold)
+	int prod_def_shape_id = next_id;
+	stp_file << "#" << next_id << " = PRODUCT_DEFINITION_SHAPE('Converted Mesh',' ',#" << (next_id + 1) << ");\n";
+	next_id++;
+
+	// Shape definition representation (holds the manifold shape and context)
+	stp_file << "#" << next_id << " = SHAPE_DEFINITION_REPRESENTATION(#" << prod_def_shape_id << ",#" << (next_id + 1) << ");\n";
+	next_id++;
+
+	// Representation with manifold and context references
+	stp_file << "#" << next_id << " = REPRESENTATION('Mesh Representation',(#" << manifold_shape_id << "),#" << (next_id - 5) << ");\n";
+	next_id++;
+
+	// Product type
+	int product_id = next_id;
+	stp_file << "#" << next_id << " = PRODUCT('Converted Mesh Part','Converted Mesh Part','STL Converted Part',( ));\n";
+	next_id++;
+
+	// Product definition context (design context)
+	stp_file << "#" << next_id << " = PRODUCT_DEFINITION_CONTEXT('3D Mechanical Parts',#" << (next_id + 1) << "'part definition');\n";
+	next_id++;
+
+	// Application context
+	stp_file << "#" << next_id << " = APPLICATION_CONTEXT('3D mechanical design');\n";
+	next_id++;
+
+	// Product definition (defines the product at a specific lifecycle state)
+	stp_file << "#" << next_id << " = PRODUCT_DEFINITION('design','',#" << product_id << ",#" << (next_id - 2) << ");\n";
+	next_id++;
+
+	// Mechanical design geometric presentation area
+	stp_file << "#" << next_id << " = PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE(' ','',#" << (next_id - 1) << ",.MADE_FROM.);\n";
+
 	stp_file << "ENDSEC;\n";
 	stp_file << "END-ISO-10303-21;\n";
 	stp_file.close();

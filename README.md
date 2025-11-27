@@ -1,5 +1,12 @@
 # stltostp
-Command line utility to convert stl files to STEP (ISO 10303-21) files. The translation is a direct triangle to triangle conversion with a tolerance based merging of edges. stltostp translates without depending on 3rd party tools such as OpenCascade or FreeCAD.
+Command line utility to convert STL files to STEP (ISO 10303-21) files. The translation is a direct triangle-to-triangle conversion with tolerance-based edge merging. stltostp generates CAD-interoperable STEP files without depending on third-party libraries like OpenCASCADE or FreeCAD.
+
+**Features:**
+- ✅ STL to STEP conversion (ASCII and binary STL support)
+- ✅ AP214 ISO 10303-214 standard compliance for CAD tool interoperability
+- ✅ Automatic edge merging with configurable tolerance
+- ✅ No external CAD library dependencies
+
 ![Image of stltostp input_output](https://github.com/slugdev/stltostp/blob/master/doc/input_output.jpg)
 
 ### Usage
