@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include <chrono>
 #include <sstream>
 #include <map>
+#include <cctype>
 #include <iomanip> // put_time
 StepKernel::StepKernel()
 {
@@ -200,8 +201,7 @@ void StepKernel::get_edge_from_map(
 		edge_map[edge_tuple1_f] = edge_curve;
 	}
 }
-
-void StepKernel::write_step(std::string file_name)
+void StepKernel::write_step(std::string file_name, const std::string &unit)
 {
 	std::time_t tt = std ::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	struct std::tm * ptm = std::localtime(&tt);
@@ -212,9 +212,14 @@ void StepKernel::write_step(std::string file_name)
 	stp_file.open(file_name);
 	if (!stp_file)
 		return;
+
+	// preserve coordinate precision
+	stp_file << std::fixed << std::setprecision(15);
+
 	std::string author = "slugdev";
 	std::string org = "org";
-		// header info
+
+	// header info (minimal)
 	stp_file << "ISO-10303-21;\n";
 	stp_file << "HEADER;\n";
 	stp_file << "FILE_DESCRIPTION(('STP203'),'2;1');\n";
@@ -225,9 +230,42 @@ void StepKernel::write_step(std::string file_name)
 	// data section
 	stp_file << "DATA;\n";
 
-	for (auto e:entities )
+	// serialize existing entities
+	for (auto e : entities)
 		e->serialize(stp_file);
-	// create the base csys
+
+	// map unit token to STEP LENGTH_UNIT name and conversion to metres
+	std::string unit_low = unit;
+	std::transform(unit_low.begin(), unit_low.end(), unit_low.begin(), ::tolower);
+	std::string step_unit_label;
+	double unit_scale = 0.001; // default mm -> metres
+	if (unit_low == "mm" || unit_low == "millimetre" || unit_low == "millimeter") {
+		step_unit_label = "MILLIMETRE";
+		unit_scale = 0.001;
+	}
+	else if (unit_low == "m" || unit_low == "metre" || unit_low == "meter") {
+		step_unit_label = "METRE";
+		unit_scale = 1.0;
+	}
+	else if (unit_low == "cm" || unit_low == "centimetre" || unit_low == "centimeter") {
+		step_unit_label = "CENTIMETRE";
+		unit_scale = 0.01;
+	}
+	else if (unit_low == "in" || unit_low == "inch" || unit_low == "inches") {
+		step_unit_label = "INCH";
+		unit_scale = 0.0254;
+	}
+	else {
+		// Unknown token, fall back to millimetre
+		step_unit_label = "MILLIMETRE";
+		unit_scale = 0.001;
+	}
+
+	int uid = static_cast<int>(entities.size()) + 1;
+	stp_file << "#" << uid << " = UNIT_ASSIGNMENT((#" << (uid + 1) << "));\n";
+	uid++;
+	stp_file << "#" << uid << " = LENGTH_UNIT('" << step_unit_label << "'," << unit_scale << ");\n";
+
 	stp_file << "ENDSEC;\n";
 	stp_file << "END-ISO-10303-21;\n";
 	stp_file.close();
@@ -286,7 +324,6 @@ void StepKernel::read_step(std::string file_name)
 			data_section = false;
 			break;
 		}
-		// parse the id
 		int id = -1;
 		if (cur_str.size() > 0 && cur_str[0] == '#' && cur_str.find('='))
 		{
