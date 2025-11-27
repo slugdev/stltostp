@@ -37,14 +37,14 @@ std::vector<double> read_stl_binary(std::string file_name)
 {
 	/*
 	according to wikipedia ...
-	UINT8[80] – Header
-	UINT32 – Number of triangles
+	UINT8[80] ï¿½ Header
+	UINT32 ï¿½ Number of triangles
 	foreach triangle
-	REAL32[3] – Normal vector
-	REAL32[3] – Vertex 1
-	REAL32[3] – Vertex 2
-	REAL32[3] – Vertex 3
-	UINT16 – Attribute byte count
+	REAL32[3] ï¿½ Normal vector
+	REAL32[3] ï¿½ Vertex 1
+	REAL32[3] ï¿½ Vertex 2
+	REAL32[3] ï¿½ Vertex 3
+	UINT16 ï¿½ Attribute byte count
 	end	*/
 
 	std::vector<double> nodes;
@@ -152,7 +152,8 @@ int main(int arv, char* argc[])
 {
 	double tol = 1e-6;
 	bool mergeplanar = false;
-	std::string help = "stltostp <stl_file> <step_file> [tol <value>] \n";
+	std::string out_units = "mm"; // default output units
+	std::string help = "stltostp <stl_file> <step_file> [tol <value>] [units <mm|cm|m|in>]\n";
 
 	if (arv < 3)
 	{
@@ -178,6 +179,17 @@ int main(int arv, char* argc[])
 			std::cout << "Treating input file as a step file instead of stl...\n";
 			arg_cnt++;
 		}
+        else if (cur_arg == "units" || cur_arg == "unit")
+        {
+            if (arg_cnt + 1 >= arv)
+            {
+                std::cout << "Missing value for units parameter\n";
+                return 1;
+            }
+            out_units = argc[arg_cnt + 1];
+            std::cout << "Output units set to " << out_units << "\n";
+            arg_cnt++;
+        }
 		else
 		{
 			std::cout << "Unknown parameter " << cur_arg << "\n";
@@ -198,7 +210,7 @@ int main(int arv, char* argc[])
 	StepKernel se;
 	int merged_edge_cnt = 0;
 	se.build_tri_body(nodes,tol,merged_edge_cnt);
-	se.write_step(output_file);
+	se.write_step(output_file, out_units);
 	std::cout << "Merged " << merged_edge_cnt << " edges\n";
 	std::cout << "Exported STEP file: " << output_file << "\n";
 	return 0;
