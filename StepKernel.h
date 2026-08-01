@@ -580,6 +580,7 @@ public:
 			vert1 = 0;
 			vert2 = 0;
 			surfCurve = 0;
+			line = 0;
 			dir = true;
 		}
 		EdgeCurve(std::vector<Entity*> &ent_list,Vertex* vert1_in, Vertex* vert2_in, SurfaceCurve* surf_curve_in, bool dir_in) : Entity(ent_list)
@@ -587,6 +588,15 @@ public:
 			vert1 = vert1_in;
 			vert2 = vert2_in;
 			surfCurve = surf_curve_in;
+			line = 0;
+			dir = dir_in;
+		}
+		EdgeCurve(std::vector<Entity*> &ent_list,Vertex* vert1_in, Vertex* vert2_in, Line* line_in, bool dir_in) : Entity(ent_list)
+		{
+			vert1 = vert1_in;
+			vert2 = vert2_in;
+			surfCurve = 0;
+			line = line_in;
 			dir = dir_in;
 		}
 		virtual ~EdgeCurve()
