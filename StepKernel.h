@@ -464,18 +464,23 @@ public:
 		{
 			csys = 0;
 			shellModel = 0;
+			context_id = 0;
 		}
 		ManifoldShape(std::vector<Entity*> &ent_list, Csys3D* csys_in, ShellModel* shell_model_in) : Entity(ent_list)
 		{
 			csys = csys_in;
 			shellModel = shell_model_in;
+			context_id = 0;
 		}
 		virtual ~ManifoldShape()
 		{}
 
 		virtual void serialize(std::ostream& stream_in)
 		{
-			stream_in << "#" << id << " = MANIFOLD_SURFACE_SHAPE_REPRESENTATION('" << label << "', (#" << csys->id << ", #" << shellModel->id << "));\n";
+			stream_in << "#" << id << " = MANIFOLD_SURFACE_SHAPE_REPRESENTATION('" << label << "', (#" << csys->id << ", #" << shellModel->id << ")";
+			if (context_id > 0)
+				stream_in << ", #" << context_id;
+			stream_in << ");\n";
 		}
 		virtual void parse_args(std::map<int, Entity*> &ent_map, std::string args)
 		{
@@ -500,6 +505,8 @@ public:
 
 		Csys3D* csys;
 		ShellModel* shellModel;
+		// id of the geometric representation context (units); 0 = omit
+		int context_id;
 	};
 
 	class Vertex : public Entity
@@ -766,6 +773,9 @@ public:
 		EdgeCurve *& edge_curve,
 		bool &edge_dir,
 		int &merge_cnt);
+	// file_name - output STEP file
+	// unit - output length unit token: "mm" (default), "cm", "m", "in"
+	// schema - FILE_SCHEMA declaration: "203" (default) or "214"
 	void write_step(std::string file_name, const std::string &unit = "mm", const std::string &schema = "203");
 	std::string read_line(std::ifstream &stp_file, bool skip_all_space);
 	void read_step(std::string file_name);

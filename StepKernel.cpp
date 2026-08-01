@@ -34,6 +34,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include <map>
 #include <iomanip> // put_time
 #include <cctype>
+
+static std::string to_lower_copy(std::string str)
+{
+	for (auto &c : str)
+		c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+	return str;
+}
+
 StepKernel::StepKernel()
 {
 
@@ -213,152 +221,88 @@ void StepKernel::write_step(std::string file_name, const std::string &unit, cons
 	if (!stp_file)
 		return;
 
-	// Set precision for floating point numbers to preserve accuracy
-	stp_file << std::fixed << std::setprecision(15);
+	// up to 15 significant digits so double precision coordinates survive a
+	// round trip (the stream default of 6 truncates them)
+	stp_file << std::setprecision(15);
 
-	// Normalize and map unit token to STEP LENGTH_UNIT name and scale (metres per unit)
-	std::string u = unit;
-	for (auto &c : u) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-	std::string step_unit_label = "MILLIMETRE";
-	double unit_scale = 0.001; // metres per unit
-	if (u == "mm" || u == "millimetre" || u == "millimeter")
-	{
-		step_unit_label = "MILLIMETRE";
-		unit_scale = 0.001;
-	}
+	// normalize the unit token; unknown tokens fall back to millimetres
+	std::string u = to_lower_copy(unit);
+	bool is_inch = (u == "in" || u == "inch" || u == "inches");
+	std::string si_prefix = ".MILLI."; // SI_UNIT prefix for mm/cm/m
+	if (u == "m" || u == "metre" || u == "meter")
+		si_prefix = "$";
 	else if (u == "cm" || u == "centimetre" || u == "centimeter")
-	{
-		step_unit_label = "CENTIMETRE";
-		unit_scale = 0.01;
-	}
-	else if (u == "m" || u == "metre" || u == "meter")
-	{
-		step_unit_label = "METRE";
-		unit_scale = 1.0;
-	}
-	else if (u == "in" || u == "inch" || u == "inches")
-	{
-		step_unit_label = "INCH";
-		unit_scale = 0.0254;
-	}
-	else
-	{
-		// Unknown unit token; default to millimetre
-		step_unit_label = "MILLIMETRE";
-		unit_scale = 0.001;
-	}
+		si_prefix = ".CENTI.";
+	else if (!is_inch && !(u == "mm" || u == "millimetre" || u == "millimeter"))
+		std::cout << "Unknown unit '" << unit << "', defaulting to mm\n";
+
+	// default to AP203 unless the schema token requests 214
+	std::string s = to_lower_copy(schema);
+	bool ap214 = (s == "214" || s == "ap214");
 
 	std::string author = "slugdev";
 	std::string org = "org";
 
-	// Header section - ISO 10303-21
+	// header info
 	stp_file << "ISO-10303-21;\n";
 	stp_file << "HEADER;\n";
-	stp_file << "FILE_DESCRIPTION(('Configuration controlled 3D design of mechanical parts and assemblies'),'2;1');\n";
-	stp_file << "FILE_NAME('" << file_name << "','" << iso_time.str() << "',('" << author << "'),('" << org << "'),'StepKernel by stltostp','stltostp v1.0.1',' ');\n";
-	// Default to AP203 unless schema token requests 214
-	std::string s = schema;
-	for (auto &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-	if (s == "214" || s == "ap214")
-		stp_file << "FILE_SCHEMA(('AP214IS'),'3');\n";
+	stp_file << "FILE_DESCRIPTION(('" << (ap214 ? "STEP AP214" : "STEP AP203") << "'),'2;1');\n";
+	stp_file << "FILE_NAME('" << file_name << "','" << iso_time.str() << "',('" << author << "'),('" << org << "'),' ','stltostp',' ');\n";
+	if (ap214)
+		stp_file << "FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));\n";
 	else
-		stp_file << "FILE_SCHEMA(('AP203'),'2');\n";
+		stp_file << "FILE_SCHEMA(('CONFIG_CONTROL_DESIGN'));\n";
 	stp_file << "ENDSEC;\n";
 
-	// Data section
+	// data section
 	stp_file << "DATA;\n";
 
-	// Get the last entity ID to generate new wrapper entity IDs
-	int next_id = static_cast<int>(entities.size()) + 1;
-
-	// Serialize all geometric/topological entities first
+	// entity ids may be non-contiguous after read_step, so start after the
+	// largest id in use
+	int next_id = 0;
 	for (auto e : entities)
-		e->serialize(stp_file);
-
-	// Get reference to the last created entity (should be ManifoldShape)
-	// Assuming the last entity is the top-level ManifoldShape created in build_tri_body
-	int manifold_shape_id = static_cast<int>(entities.size());
-
-	// Emit context/wrapper entities. For AP214, emit fuller set; for AP203 keep minimal.
-	// Unit assignment (uses the next LENGTH_UNIT entity)
-	stp_file << "#" << next_id << " = UNIT_ASSIGNMENT((#" << (next_id + 1) << "));\n";
+		next_id = std::max(next_id, e->id);
 	next_id++;
 
-	// Length unit using chosen unit label and scale (metres per unit)
-	stp_file << "#" << next_id << " = LENGTH_UNIT('" << step_unit_label << "'," << unit_scale << ");\n";
-	next_id++;
-
-	std::string sfull = schema;
-	for (auto &c : sfull) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-	if (sfull == "214" || sfull == "ap214")
+	// declare the length unit of the model: an SI unit for mm/cm/m or a
+	// conversion based unit for inches (ISO 10303-21 complex instances)
+	int length_unit_id = 0;
+	if (is_inch)
 	{
-		// Geometric representation context (3D)
-		stp_file << "#" << next_id << " = GEOMETRIC_REPRESENTATION_CONTEXT('2D',#" << (next_id + 1) << ",#" << (next_id + 2) << ");\n";
-		next_id++;
-
-		// Parametric representation context
-		stp_file << "#" << next_id << " = PARAMETRIC_REPRESENTATION_CONTEXT('3D',#" << (next_id + 1) << ");\n";
-		next_id++;
-
-		// Representation context (for general use)
-		stp_file << "#" << next_id << " = REPRESENTATION_CONTEXT('3D','3D Space');\n";
-		next_id++;
-
-		// Axis placement 3D (global coordinate system) for product context
-		int placement_id = next_id;
-		stp_file << "#" << next_id << " = AXIS2_PLACEMENT_3D('Global Origin',#" << (next_id + 1) << ",#" << (next_id + 2) << ",#" << (next_id + 3) << ");\n";
-		next_id++;
-
-		// Origin point (0,0,0) for global placement
-		stp_file << "#" << next_id << " = CARTESIAN_POINT('Origin',(0.0,0.0,0.0));\n";
-		next_id++;
-
-		// Z direction
-		stp_file << "#" << next_id << " = DIRECTION('Z',(0.0,0.0,1.0));\n";
-		next_id++;
-
-		// X direction
-		stp_file << "#" << next_id << " = DIRECTION('X',(1.0,0.0,0.0));\n";
-		next_id++;
-
-		// Product definition shape (references the manifold)
-		int prod_def_shape_id = next_id;
-		stp_file << "#" << next_id << " = PRODUCT_DEFINITION_SHAPE('Converted Mesh',' ',#" << (next_id + 1) << ");\n";
-		next_id++;
-
-		// Shape definition representation (holds the manifold shape and context)
-		stp_file << "#" << next_id << " = SHAPE_DEFINITION_REPRESENTATION(#" << prod_def_shape_id << ",#" << (next_id + 1) << ");\n";
-		next_id++;
-
-		// Representation with manifold and context references
-		stp_file << "#" << next_id << " = REPRESENTATION('Mesh Representation',(#" << manifold_shape_id << "),#" << (next_id - 5) << ");\n";
-		next_id++;
-
-		// Product type
-		int product_id = next_id;
-		stp_file << "#" << next_id << " = PRODUCT('Converted Mesh Part','Converted Mesh Part','STL Converted Part',( ));\n";
-		next_id++;
-
-		// Product definition context (design context)
-		stp_file << "#" << next_id << " = PRODUCT_DEFINITION_CONTEXT('3D Mechanical Parts',#" << (next_id + 1) << "'part definition');\n";
-		next_id++;
-
-		// Application context
-		stp_file << "#" << next_id << " = APPLICATION_CONTEXT('3D mechanical design');\n";
-		next_id++;
-
-		// Product definition (defines the product at a specific lifecycle state)
-		stp_file << "#" << next_id << " = PRODUCT_DEFINITION('design','',#" << product_id << ",#" << (next_id - 2) << ");\n";
-		next_id++;
-
-		// Mechanical design geometric presentation area
-		stp_file << "#" << next_id << " = PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE(' ','',#" << (next_id - 1) << ",.MADE_FROM.);\n";
+		int si_mm_id = next_id++;
+		int dim_exp_id = next_id++;
+		int measure_id = next_id++;
+		length_unit_id = next_id++;
+		stp_file << "#" << si_mm_id << " = ( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.) );\n";
+		stp_file << "#" << dim_exp_id << " = DIMENSIONAL_EXPONENTS(1.,0.,0.,0.,0.,0.,0.);\n";
+		stp_file << "#" << measure_id << " = MEASURE_WITH_UNIT(LENGTH_MEASURE(25.4),#" << si_mm_id << ");\n";
+		stp_file << "#" << length_unit_id << " = ( CONVERSION_BASED_UNIT('INCH',#" << measure_id << ") LENGTH_UNIT() NAMED_UNIT(#" << dim_exp_id << ") );\n";
 	}
 	else
 	{
-		// For AP203 we keep the file minimal: units are written above.
-		// Additional AP203-specific wrapper entities can be added if required.
+		length_unit_id = next_id++;
+		stp_file << "#" << length_unit_id << " = ( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(" << si_prefix << ",.METRE.) );\n";
 	}
+	int angle_unit_id = next_id++;
+	int solid_angle_unit_id = next_id++;
+	int uncertainty_id = next_id++;
+	int context_id = next_id++;
+	stp_file << "#" << angle_unit_id << " = ( NAMED_UNIT(*) PLANE_ANGLE_UNIT() SI_UNIT($,.RADIAN.) );\n";
+	stp_file << "#" << solid_angle_unit_id << " = ( NAMED_UNIT(*) SI_UNIT($,.STERADIAN.) SOLID_ANGLE_UNIT() );\n";
+	stp_file << "#" << uncertainty_id << " = UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.0E-7),#" << length_unit_id
+		<< ",'distance_accuracy_value','Maximum model space distance between geometric entities at asserted connectivities');\n";
+	stp_file << "#" << context_id << " = ( GEOMETRIC_REPRESENTATION_CONTEXT(3) GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#" << uncertainty_id
+		<< ")) GLOBAL_UNIT_ASSIGNED_CONTEXT((#" << length_unit_id << ",#" << angle_unit_id << ",#" << solid_angle_unit_id
+		<< ")) REPRESENTATION_CONTEXT('Context #1','3D Context') );\n";
+
+	// attach the unit context to the shape representation(s) so importers
+	// interpret the coordinates in the requested unit
+	for (auto e : entities)
+		if (auto shape = dynamic_cast<ManifoldShape*>(e))
+			shape->context_id = context_id;
+
+	for (auto e : entities)
+		e->serialize(stp_file);
 
 	stp_file << "ENDSEC;\n";
 	stp_file << "END-ISO-10303-21;\n";

@@ -1,6 +1,7 @@
-build/
-CMakeCache.txt
-CMakeFiles/
+# Log files
+*.log
+logs/
+
 # CMake build artifacts
 build/
 Build/
