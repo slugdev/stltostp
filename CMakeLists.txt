@@ -77,16 +77,25 @@ ADD_TEST(
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION "bin/")
 
 if(WIN32)
-set(CPACK_GENERATOR WIX)
-set(CPACK_PACKAGE_NAME "stltostp")
-set(CPACK_PACKAGE_VENDOR "slugdev")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Command line utility to convert stl files to STEP brep files.")
-set(CPACK_PACKAGE_VERSION_MAJOR "1")
-set(CPACK_PACKAGE_VERSION_MINOR "0")
-set(CPACK_PACKAGE_VERSION_PATCH "3")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CMAKE_PROJECT_NAME}/${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
-set(CPACK_WIX_UPGRADE_GUID "F9AEABA2-D7AF-4EA6-BF46-B3E165410D17")
-include (InstallRequiredSystemLibraries)
-include(CPack)
+  set(CPACK_GENERATOR NSIS)
+  set(CPACK_PACKAGE_NAME "stltostp")
+  set(CPACK_PACKAGE_VENDOR "slugdev")
+  set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt")
+  set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Command line utility to convert stl files to STEP brep files.")
+  set(CPACK_PACKAGE_VERSION_MAJOR "1")
+  set(CPACK_PACKAGE_VERSION_MINOR "0")
+  set(CPACK_PACKAGE_VERSION_PATCH "3")
+  # no path separator here: the NSIS generator requires escaped backslashes in
+  # nested install directories, so use a flat "name version" folder instead
+  set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CMAKE_PROJECT_NAME} ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
+  set(CPACK_NSIS_DISPLAY_NAME "stltostp")
+  set(CPACK_NSIS_PACKAGE_NAME "stltostp")
+  set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/slugdev/stltostp")
+  # remove any previous NSIS-based version first so upgrades between NSIS
+  # installers stay clean
+  set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+  # stltostp is a command line tool: offer adding the install dir to PATH
+  set(CPACK_NSIS_MODIFY_PATH ON)
+  include(InstallRequiredSystemLibraries)
+  include(CPack)
 endif(WIN32)
