@@ -46,6 +46,11 @@ ADD_TEST(
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
 )
 
+ADD_TEST(
+	NAME edge_curve_line_geometry
+	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_line_geometry.cmake
+)
+
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION "bin/")
 
 if(WIN32)

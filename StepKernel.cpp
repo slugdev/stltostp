@@ -58,8 +58,7 @@ StepKernel::EdgeCurve* StepKernel::create_edge_curve(StepKernel::Vertex * vert1,
 	auto line_dir1 = new Direction(entities, vx, vy, vz);
 	auto line_vector1 = new Vector(entities, line_dir1, 1.0);
 	auto line1 = new Line(entities, line_point1, line_vector1);
-	auto surf_curve1 = new SurfaceCurve(entities, line1);
-	return new EdgeCurve(entities, vert1, vert2, surf_curve1, dir);
+	return new EdgeCurve(entities, vert1, vert2, line1, dir);
 }
 
 void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged_edge_cnt)
