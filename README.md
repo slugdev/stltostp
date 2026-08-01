@@ -30,4 +30,4 @@ make clean all && sudo make install
 BSD
 
 ## Windows Installer
-[stltostp-1.0.1-win64.msi](https://github.com/slugdev/stltostp/releases/download/v1.0.1/stltostp-1.0.1-win64.msi)
+[stltostp-1.0.3-win64.exe](https://github.com/slugdev/stltostp/releases/download/v1.0.3/stltostp-1.0.3-win64.exe)
