@@ -170,6 +170,11 @@ int main(int arv, char* argc[])
 		std::string cur_arg = argc[arg_cnt];
 		if (cur_arg == "tol")
 		{
+			if (arg_cnt + 1 >= arv)
+			{
+				std::cout << "Missing value for tol parameter\n";
+				return 1;
+			}
 			tol = std::atof(argc[arg_cnt + 1]);
 			std::cout << "Minimum edge tolerance set to " << tol << "\n";
 			arg_cnt++;
@@ -177,43 +182,39 @@ int main(int arv, char* argc[])
 		else if (cur_arg == "mergeplanar")
 		{
 			mergeplanar = true;
+<<<<<<< HEAD
 			std::cout << "Merging coplanar triangles into planar faces...\n";
+=======
+			std::cout << "Planar face merging enabled\n";
+			arg_cnt++;
+		}
+		else if (cur_arg == "units" || cur_arg == "unit")
+		{
+			if (arg_cnt + 1 >= arv)
+			{
+				std::cout << "Missing value for units parameter\n";
+				return 1;
+			}
+			out_units = argc[arg_cnt + 1];
+			std::cout << "Output units set to: " << out_units << "\n";
+			arg_cnt++;
+		}
+		else if (cur_arg == "schema")
+		{
+			if (arg_cnt + 1 >= arv)
+			{
+				std::cout << "Missing value for schema parameter\n";
+				return 1;
+			}
+			out_schema = argc[arg_cnt + 1];
+			std::cout << "Output schema set to: " << out_schema << "\n";
+			arg_cnt++;
+>>>>>>> origin/master
 		}
 		else
 		{
-			if (cur_arg == "units")
-			{
-				if (arg_cnt + 1 < arv)
-				{
-					out_units = argc[arg_cnt + 1];
-					std::cout << "Output units set to: " << out_units << "\n";
-					arg_cnt++;
-				}
-				else
-				{
-					std::cout << "Missing value for units parameter\n";
-					return 1;
-				}
-			}
-			else if (cur_arg == "schema")
-			{
-				if (arg_cnt + 1 < arv)
-				{
-					out_schema = argc[arg_cnt + 1];
-					std::cout << "Output schema set to: " << out_schema << "\n";
-					arg_cnt++;
-				}
-				else
-				{
-					std::cout << "Missing value for schema parameter\n";
-					return 1;
-				}
-			}
-			else
-			{
-				std::cout << "Unknown parameter " << cur_arg << "\n";
-				return 1;
-			}
+			std::cout << "Unknown parameter " << cur_arg << "\n";
+			return 1;
 		}
 		arg_cnt++;
 	}

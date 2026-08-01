@@ -23,6 +23,12 @@ ADD_TEST(
 )
 
 ADD_TEST(
+	NAME bucket_units
+	COMMAND stltostp bucket.stl bucket_inches.stp units in
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+)
+
+ADD_TEST(
 	NAME cat_dish_bin
 	COMMAND stltostp cat_dish_bin.stl cat_dish_bin.stp
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
@@ -47,6 +53,7 @@ ADD_TEST(
 )
 
 ADD_TEST(
+<<<<<<< HEAD
 	NAME mergeplanar_cube
 	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_mergeplanar.cmake
 )
@@ -61,6 +68,10 @@ ADD_TEST(
 	NAME mergeplanar_cat_dish
 	COMMAND stltostp cat_dish.stl cat_dish_merged.stp mergeplanar
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+=======
+	NAME edge_curve_line_geometry
+	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_line_geometry.cmake
+>>>>>>> origin/master
 )
 
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION "bin/")
@@ -73,11 +84,9 @@ set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Command line utility to convert stl files to STEP brep files.")
 set(CPACK_PACKAGE_VERSION_MAJOR "1")
 set(CPACK_PACKAGE_VERSION_MINOR "0")
-set(CPACK_PACKAGE_VERSION_PATCH "2")
+set(CPACK_PACKAGE_VERSION_PATCH "3")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CMAKE_PROJECT_NAME}/${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
 set(CPACK_WIX_UPGRADE_GUID "F9AEABA2-D7AF-4EA6-BF46-B3E165410D17")
 include (InstallRequiredSystemLibraries)
 include(CPack)
 endif(WIN32)
-
-
