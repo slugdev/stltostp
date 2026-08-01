@@ -35,6 +35,18 @@ ADD_TEST(
 )
 
 ADD_TEST(
+	NAME cat_dish_units
+	COMMAND stltostp cat_dish.stl cat_dish_inches.stp units in
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+)
+
+ADD_TEST(
+	NAME cat_dish_214
+	COMMAND stltostp cat_dish.stl cat_dish_214.stp schema 214
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+)
+
+ADD_TEST(
 	NAME single_tri
 	COMMAND stltostp single_tri.stl single_tri.stp
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
@@ -56,4 +68,5 @@ set(CPACK_WIX_UPGRADE_GUID "F9AEABA2-D7AF-4EA6-BF46-B3E165410D17")
 include (InstallRequiredSystemLibraries)
 include(CPack)
 endif(WIN32)
+
 

@@ -152,8 +152,7 @@ int main(int arv, char* argc[])
 {
 	double tol = 1e-6;
 	bool mergeplanar = false;
-	std::string out_units = "mm"; // default output units
-	std::string help = "stltostp <stl_file> <step_file> [tol <value>] [units <mm|cm|m|in>]\n";
+	std::string help = "stltostp <stl_file> <step_file> [tol <value>] [units <mm|cm|m|in>] [schema <203|214>]\n";
 
 	if (arv < 3)
 	{
@@ -164,6 +163,8 @@ int main(int arv, char* argc[])
 	std::string input_file = argc[1];
 	std::string output_file = argc[2];
 	int arg_cnt = 3;
+	std::string out_units = "mm";
+	std::string out_schema = "203";
 	while (arg_cnt < arv)
 	{
 		std::string cur_arg = argc[arg_cnt];
@@ -179,21 +180,41 @@ int main(int arv, char* argc[])
 			std::cout << "Treating input file as a step file instead of stl...\n";
 			arg_cnt++;
 		}
-        else if (cur_arg == "units" || cur_arg == "unit")
-        {
-            if (arg_cnt + 1 >= arv)
-            {
-                std::cout << "Missing value for units parameter\n";
-                return 1;
-            }
-            out_units = argc[arg_cnt + 1];
-            std::cout << "Output units set to " << out_units << "\n";
-            arg_cnt++;
-        }
 		else
 		{
-			std::cout << "Unknown parameter " << cur_arg << "\n";
-			return 1;
+			if (cur_arg == "units")
+			{
+				if (arg_cnt + 1 < arv)
+				{
+					out_units = argc[arg_cnt + 1];
+					std::cout << "Output units set to: " << out_units << "\n";
+					arg_cnt++;
+				}
+				else
+				{
+					std::cout << "Missing value for units parameter\n";
+					return 1;
+				}
+			}
+			else if (cur_arg == "schema")
+			{
+				if (arg_cnt + 1 < arv)
+				{
+					out_schema = argc[arg_cnt + 1];
+					std::cout << "Output schema set to: " << out_schema << "\n";
+					arg_cnt++;
+				}
+				else
+				{
+					std::cout << "Missing value for schema parameter\n";
+					return 1;
+				}
+			}
+			else
+			{
+				std::cout << "Unknown parameter " << cur_arg << "\n";
+				return 1;
+			}
 		}
 		arg_cnt++;
 	}
@@ -210,7 +231,7 @@ int main(int arv, char* argc[])
 	StepKernel se;
 	int merged_edge_cnt = 0;
 	se.build_tri_body(nodes,tol,merged_edge_cnt);
-	se.write_step(output_file, out_units);
+	se.write_step(output_file, out_units, out_schema);
 	std::cout << "Merged " << merged_edge_cnt << " edges\n";
 	std::cout << "Exported STEP file: " << output_file << "\n";
 	return 0;
