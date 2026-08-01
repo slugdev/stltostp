@@ -276,7 +276,7 @@ void StepKernel::write_step(std::string file_name, const std::string &unit, cons
 		length_unit_id = next_id++;
 		stp_file << "#" << si_mm_id << " = ( LENGTH_UNIT() NAMED_UNIT(*) SI_UNIT(.MILLI.,.METRE.) );\n";
 		stp_file << "#" << dim_exp_id << " = DIMENSIONAL_EXPONENTS(1.,0.,0.,0.,0.,0.,0.);\n";
-		stp_file << "#" << measure_id << " = LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(25.4),#" << si_mm_id << ");\n";
+		stp_file << "#" << measure_id << " = MEASURE_WITH_UNIT(LENGTH_MEASURE(25.4),#" << si_mm_id << ");\n";
 		stp_file << "#" << length_unit_id << " = ( CONVERSION_BASED_UNIT('INCH',#" << measure_id << ") LENGTH_UNIT() NAMED_UNIT(#" << dim_exp_id << ") );\n";
 	}
 	else
