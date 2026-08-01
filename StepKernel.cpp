@@ -353,7 +353,25 @@ void StepKernel::build_tri_body_merged(std::vector<double> tris, double tol, int
 		const double *l0a = loops[0][0].first;
 		const double *l0b = loops[0][0].second;
 		double ref[3] = { l0b[0] - l0a[0], l0b[1] - l0a[1], l0b[2] - l0a[2] };
+		// Orthonormalize ref against the normal (matches the non-merged path's csys construction)
+		double dotnr = ref[0] * n[0] + ref[1] * n[1] + ref[2] * n[2];
+		ref[0] -= dotnr * n[0];
+		ref[1] -= dotnr * n[1];
+		ref[2] -= dotnr * n[2];
 		double ref_len = sqrt(ref[0] * ref[0] + ref[1] * ref[1] + ref[2] * ref[2]);
+		if (ref_len < tol)
+		{
+			// Fallback: pick any direction orthogonal to the normal
+			double tmp[3] = { 0.0, 0.0, 1.0 };
+			if (fabs(n[2]) > 0.9)
+			{
+				tmp[0] = 0.0; tmp[1] = 1.0; tmp[2] = 0.0;
+			}
+			ref[0] = tmp[1] * n[2] - tmp[2] * n[1];
+			ref[1] = tmp[2] * n[0] - tmp[0] * n[2];
+			ref[2] = tmp[0] * n[1] - tmp[1] * n[0];
+			ref_len = sqrt(ref[0] * ref[0] + ref[1] * ref[1] + ref[2] * ref[2]);
+		}
 		auto plane_point = new Point(entities, l0a[0], l0a[1], l0a[2]);
 		auto plane_dir_1 = new Direction(entities, n[0], n[1], n[2]);
 		auto plane_dir_2 = new Direction(entities, ref[0] / ref_len, ref[1] / ref_len, ref[2] / ref_len);
