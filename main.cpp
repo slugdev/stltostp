@@ -152,7 +152,7 @@ int main(int arv, char* argc[])
 {
 	double tol = 1e-6;
 	bool mergeplanar = false;
-	std::string help = "stltostp <stl_file> <step_file> [tol <value>] [units <mm|cm|m|in>] [schema <203|214>]\n";
+	std::string help = "stltostp <stl_file> <step_file> [tol <value>] [units <mm|cm|m|in>] [schema <203|214>] [mergeplanar]\n";
 
 	if (arv < 3)
 	{
@@ -170,6 +170,11 @@ int main(int arv, char* argc[])
 		std::string cur_arg = argc[arg_cnt];
 		if (cur_arg == "tol")
 		{
+			if (arg_cnt + 1 >= arv)
+			{
+				std::cout << "Missing value for tol parameter\n";
+				return 1;
+			}
 			tol = std::atof(argc[arg_cnt + 1]);
 			std::cout << "Minimum edge tolerance set to " << tol << "\n";
 			arg_cnt++;
@@ -177,44 +182,34 @@ int main(int arv, char* argc[])
 		else if (cur_arg == "mergeplanar")
 		{
 			mergeplanar = true;
-			std::cout << "Treating input file as a step file instead of stl...\n";
+			std::cout << "Merging coplanar triangles into planar faces...\n";
+		}
+		else if (cur_arg == "units" || cur_arg == "unit")
+		{
+			if (arg_cnt + 1 >= arv)
+			{
+				std::cout << "Missing value for units parameter\n";
+				return 1;
+			}
+			out_units = argc[arg_cnt + 1];
+			std::cout << "Output units set to: " << out_units << "\n";
+			arg_cnt++;
+		}
+		else if (cur_arg == "schema")
+		{
+			if (arg_cnt + 1 >= arv)
+			{
+				std::cout << "Missing value for schema parameter\n";
+				return 1;
+			}
+			out_schema = argc[arg_cnt + 1];
+			std::cout << "Output schema set to: " << out_schema << "\n";
 			arg_cnt++;
 		}
 		else
 		{
-			if (cur_arg == "units")
-			{
-				if (arg_cnt + 1 < arv)
-				{
-					out_units = argc[arg_cnt + 1];
-					std::cout << "Output units set to: " << out_units << "\n";
-					arg_cnt++;
-				}
-				else
-				{
-					std::cout << "Missing value for units parameter\n";
-					return 1;
-				}
-			}
-			else if (cur_arg == "schema")
-			{
-				if (arg_cnt + 1 < arv)
-				{
-					out_schema = argc[arg_cnt + 1];
-					std::cout << "Output schema set to: " << out_schema << "\n";
-					arg_cnt++;
-				}
-				else
-				{
-					std::cout << "Missing value for schema parameter\n";
-					return 1;
-				}
-			}
-			else
-			{
-				std::cout << "Unknown parameter " << cur_arg << "\n";
-				return 1;
-			}
+			std::cout << "Unknown parameter " << cur_arg << "\n";
+			return 1;
 		}
 		arg_cnt++;
 	}
@@ -230,7 +225,7 @@ int main(int arv, char* argc[])
 
 	StepKernel se;
 	int merged_edge_cnt = 0;
-	se.build_tri_body(nodes,tol,merged_edge_cnt);
+	se.build_tri_body(nodes, tol, merged_edge_cnt, mergeplanar);
 	se.write_step(output_file, out_units, out_schema);
 	std::cout << "Merged " << merged_edge_cnt << " edges\n";
 	std::cout << "Exported STEP file: " << output_file << "\n";

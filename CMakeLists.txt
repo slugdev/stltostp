@@ -23,6 +23,12 @@ ADD_TEST(
 )
 
 ADD_TEST(
+	NAME bucket_units
+	COMMAND stltostp bucket.stl bucket_inches.stp units in
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+)
+
+ADD_TEST(
 	NAME cat_dish_bin
 	COMMAND stltostp cat_dish_bin.stl cat_dish_bin.stp
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
@@ -46,6 +52,28 @@ ADD_TEST(
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
 )
 
+ADD_TEST(
+	NAME mergeplanar_cube
+	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_mergeplanar.cmake
+)
+
+ADD_TEST(
+	NAME mergeplanar_bucket
+	COMMAND stltostp bucket.stl bucket_merged.stp mergeplanar
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+)
+
+ADD_TEST(
+	NAME mergeplanar_cat_dish
+	COMMAND stltostp cat_dish.stl cat_dish_merged.stp mergeplanar
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
+)
+
+ADD_TEST(
+	NAME edge_curve_line_geometry
+	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_line_geometry.cmake
+)
+
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION "bin/")
 
 if(WIN32)
@@ -56,7 +84,7 @@ if(WIN32)
   set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Command line utility to convert stl files to STEP brep files.")
   set(CPACK_PACKAGE_VERSION_MAJOR "1")
   set(CPACK_PACKAGE_VERSION_MINOR "0")
-  set(CPACK_PACKAGE_VERSION_PATCH "2")
+  set(CPACK_PACKAGE_VERSION_PATCH "3")
   # no path separator here: the NSIS generator requires escaped backslashes in
   # nested install directories, so use a flat "name version" folder instead
   set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CMAKE_PROJECT_NAME} ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
@@ -71,4 +99,3 @@ if(WIN32)
   include(InstallRequiredSystemLibraries)
   include(CPack)
 endif(WIN32)
-

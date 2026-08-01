@@ -464,18 +464,23 @@ public:
 		{
 			csys = 0;
 			shellModel = 0;
+			context_id = 0;
 		}
 		ManifoldShape(std::vector<Entity*> &ent_list, Csys3D* csys_in, ShellModel* shell_model_in) : Entity(ent_list)
 		{
 			csys = csys_in;
 			shellModel = shell_model_in;
+			context_id = 0;
 		}
 		virtual ~ManifoldShape()
 		{}
 
 		virtual void serialize(std::ostream& stream_in)
 		{
-			stream_in << "#" << id << " = MANIFOLD_SURFACE_SHAPE_REPRESENTATION('" << label << "', (#" << csys->id << ", #" << shellModel->id << "));\n";
+			stream_in << "#" << id << " = MANIFOLD_SURFACE_SHAPE_REPRESENTATION('" << label << "', (#" << csys->id << ", #" << shellModel->id << ")";
+			if (context_id > 0)
+				stream_in << ", #" << context_id;
+			stream_in << ");\n";
 		}
 		virtual void parse_args(std::map<int, Entity*> &ent_map, std::string args)
 		{
@@ -500,6 +505,8 @@ public:
 
 		Csys3D* csys;
 		ShellModel* shellModel;
+		// id of the geometric representation context (units); 0 = omit
+		int context_id;
 	};
 
 	class Vertex : public Entity
@@ -580,6 +587,7 @@ public:
 			vert1 = 0;
 			vert2 = 0;
 			surfCurve = 0;
+			line = 0;
 			dir = true;
 		}
 		EdgeCurve(std::vector<Entity*> &ent_list,Vertex* vert1_in, Vertex* vert2_in, SurfaceCurve* surf_curve_in, bool dir_in) : Entity(ent_list)
@@ -587,6 +595,15 @@ public:
 			vert1 = vert1_in;
 			vert2 = vert2_in;
 			surfCurve = surf_curve_in;
+			line = 0;
+			dir = dir_in;
+		}
+		EdgeCurve(std::vector<Entity*> &ent_list,Vertex* vert1_in, Vertex* vert2_in, Line* line_in, bool dir_in) : Entity(ent_list)
+		{
+			vert1 = vert1_in;
+			vert2 = vert2_in;
+			surfCurve = 0;
+			line = line_in;
 			dir = dir_in;
 		}
 		virtual ~EdgeCurve()
@@ -746,7 +763,12 @@ public:
 
 	StepKernel::EdgeCurve* create_edge_curve(StepKernel::Vertex * vert1, StepKernel::Vertex * vert2, bool dir);
 
-	void build_tri_body(std::vector<double> tris, double tol, int &merged_edge_cnt);
+	// merge_planar - merge edge-connected coplanar triangles into single
+	// planar faces before writing (simplifies tessellated planar regions)
+	void build_tri_body(std::vector<double> tris, double tol, int &merged_edge_cnt, bool merge_planar = false);
+	// merge_planar implementation: groups adjacent coplanar triangles with a
+	// union-find and emits one face per group with its boundary loops
+	void build_tri_body_merged(std::vector<double> tris, double tol, int &merged_edge_cnt);
 	void get_edge_from_map(
 		double  p0[3],
 		double  p1[3],
@@ -756,6 +778,9 @@ public:
 		EdgeCurve *& edge_curve,
 		bool &edge_dir,
 		int &merge_cnt);
+	// file_name - output STEP file
+	// unit - output length unit token: "mm" (default), "cm", "m", "in"
+	// schema - FILE_SCHEMA declaration: "203" (default) or "214"
 	void write_step(std::string file_name, const std::string &unit = "mm", const std::string &schema = "203");
 	std::string read_line(std::ifstream &stp_file, bool skip_all_space);
 	void read_step(std::string file_name);
