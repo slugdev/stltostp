@@ -10,11 +10,12 @@ Command line utility to convert STL files to STEP (ISO 10303-21) files. The tran
 ![Image of stltostp input_output](https://github.com/slugdev/stltostp/blob/master/doc/input_output.jpg)
 
 ### Usage
-stltostp <stl_file> <step_file> \[ tol \<value\> \] \[ units \<mm|cm|m|in\> \] \[ schema \<203|214\> \]
+stltostp <stl_file> <step_file> \[ tol \<value\> \] \[ units \<mm|cm|m|in\> \] \[ schema \<203|214\> \] \[ mergeplanar \]
 
 - `tol` - minimum edge length; shorter edges are merged (default 1e-6)
 - `units` - length unit written to the STEP file: `mm` (default), `cm`, `m`, or `in`
 - `schema` - STEP schema declared in the file header: `203` (default) or `214`
+- `mergeplanar` - merge edge-connected coplanar triangles into single planar faces
 
 ![Image of stltostp usage](https://github.com/slugdev/stltostp/blob/master/doc/example.jpg)
 

@@ -763,7 +763,12 @@ public:
 
 	StepKernel::EdgeCurve* create_edge_curve(StepKernel::Vertex * vert1, StepKernel::Vertex * vert2, bool dir);
 
-	void build_tri_body(std::vector<double> tris, double tol, int &merged_edge_cnt);
+	// merge_planar - merge edge-connected coplanar triangles into single
+	// planar faces before writing (simplifies tessellated planar regions)
+	void build_tri_body(std::vector<double> tris, double tol, int &merged_edge_cnt, bool merge_planar = false);
+	// merge_planar implementation: groups adjacent coplanar triangles with a
+	// union-find and emits one face per group with its boundary loops
+	void build_tri_body_merged(std::vector<double> tris, double tol, int &merged_edge_cnt);
 	void get_edge_from_map(
 		double  p0[3],
 		double  p1[3],

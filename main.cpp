@@ -152,7 +152,7 @@ int main(int arv, char* argc[])
 {
 	double tol = 1e-6;
 	bool mergeplanar = false;
-	std::string help = "stltostp <stl_file> <step_file> [tol <value>] [units <mm|cm|m|in>] [schema <203|214>]\n";
+	std::string help = "stltostp <stl_file> <step_file> [tol <value>] [units <mm|cm|m|in>] [schema <203|214>] [mergeplanar]\n";
 
 	if (arv < 3)
 	{
@@ -182,8 +182,7 @@ int main(int arv, char* argc[])
 		else if (cur_arg == "mergeplanar")
 		{
 			mergeplanar = true;
-			std::cout << "Planar face merging enabled\n";
-			arg_cnt++;
+			std::cout << "Merging coplanar triangles into planar faces...\n";
 		}
 		else if (cur_arg == "units" || cur_arg == "unit")
 		{
@@ -226,7 +225,7 @@ int main(int arv, char* argc[])
 
 	StepKernel se;
 	int merged_edge_cnt = 0;
-	se.build_tri_body(nodes,tol,merged_edge_cnt);
+	se.build_tri_body(nodes, tol, merged_edge_cnt, mergeplanar);
 	se.write_step(output_file, out_units, out_schema);
 	std::cout << "Merged " << merged_edge_cnt << " edges\n";
 	std::cout << "Exported STEP file: " << output_file << "\n";

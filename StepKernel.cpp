@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #include <chrono>
 #include <sstream>
 #include <map>
+#include <functional>
 #include <iomanip> // put_time
 #include <cctype>
 
@@ -69,8 +70,14 @@ StepKernel::EdgeCurve* StepKernel::create_edge_curve(StepKernel::Vertex * vert1,
 	return new EdgeCurve(entities, vert1, vert2, line1, dir);
 }
 
-void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged_edge_cnt)
+void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged_edge_cnt, bool merge_planar)
 {
+	if (merge_planar)
+	{
+		build_tri_body_merged(tris, tol, merged_edge_cnt);
+		return;
+	}
+
 	auto point = new Point(entities, 0.0, 0.0, 0.0);
 	auto dir_1 = new Direction(entities, 0.0, 0.0, 1.0);
 	auto dir_2 = new Direction(entities, 1.0, 0.0, 0.0);
@@ -167,6 +174,238 @@ void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged
 		face_bounds.push_back(new FaceBound(entities, edge_loop, true));
 		faces.push_back(new Face(entities, face_bounds, plane, true));
 	}
+
+	// build the model
+	auto open_shell = new Shell(entities, faces);
+	std::vector<Shell*> shells;
+	shells.push_back(open_shell);
+	auto shell_model = new ShellModel(entities, shells);
+	auto manifold_shape = new ManifoldShape(entities, base_csys, shell_model);
+}
+
+void StepKernel::build_tri_body_merged(std::vector<double> tris, double tol, int &merged_edge_cnt)
+{
+	typedef std::tuple<double, double, double> PointKey;
+	typedef std::tuple<double, double, double, double, double, double> EdgeKey;
+
+	// gather valid triangles and their unit normals (computed from winding,
+	// matching the non-merged path)
+	std::vector<std::size_t> tri_ids;      // index into tris/9
+	std::vector<double> tri_normals;       // 3 per entry in tri_ids
+	for (std::size_t i = 0; i < tris.size() / 9; i++)
+	{
+		const double *p0 = &tris[i * 9 + 0];
+		const double *p1 = &tris[i * 9 + 3];
+		const double *p2 = &tris[i * 9 + 6];
+		double v0[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
+		double v1[3] = { p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2] };
+		double dist0 = sqrt(v0[0] * v0[0] + v0[1] * v0[1] + v0[2] * v0[2]);
+		double dist1 = sqrt(v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2]);
+		if (dist0 < tol || dist1 < tol)
+			continue;
+		double n[3] = { v0[1] * v1[2] - v0[2] * v1[1], v0[2] * v1[0] - v0[0] * v1[2], v0[0] * v1[1] - v0[1] * v1[0] };
+		double nlen = sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+		if (nlen / (dist0 * dist1) < tol) // degenerate/collinear triangle
+			continue;
+		tri_ids.push_back(i);
+		tri_normals.push_back(n[0] / nlen);
+		tri_normals.push_back(n[1] / nlen);
+		tri_normals.push_back(n[2] / nlen);
+	}
+	std::size_t tri_cnt = tri_ids.size();
+
+	// map each directed edge to the triangle that owns it; with consistent
+	// STL winding a manifold interior edge appears once in each direction
+	std::map<EdgeKey, std::size_t> directed_edge_tri;
+	auto vert_of = [&tris](std::size_t tri_id, int corner) -> const double* {
+		return &tris[tri_id * 9 + corner * 3];
+	};
+	auto make_edge_key = [](const double *a, const double *b) {
+		return std::make_tuple(a[0], a[1], a[2], b[0], b[1], b[2]);
+	};
+	for (std::size_t t = 0; t < tri_cnt; t++)
+		for (int c = 0; c < 3; c++)
+			directed_edge_tri[make_edge_key(vert_of(tri_ids[t], c), vert_of(tri_ids[t], (c + 1) % 3))] = t;
+
+	// union-find: merge triangles that share an edge and have parallel
+	// normals; requiring adjacency keeps disjoint coplanar patches separate
+	std::vector<std::size_t> parent(tri_cnt);
+	for (std::size_t t = 0; t < tri_cnt; t++)
+		parent[t] = t;
+	std::function<std::size_t(std::size_t)> find_root = [&](std::size_t t) -> std::size_t {
+		while (parent[t] != t)
+		{
+			parent[t] = parent[parent[t]];
+			t = parent[t];
+		}
+		return t;
+	};
+
+	const double angular_tol = 1.0e-9; // on 1 - dot(n1,n2)
+	for (std::size_t t = 0; t < tri_cnt; t++)
+	{
+		for (int c = 0; c < 3; c++)
+		{
+			auto rev_key = make_edge_key(vert_of(tri_ids[t], (c + 1) % 3), vert_of(tri_ids[t], c));
+			auto it = directed_edge_tri.find(rev_key);
+			if (it == directed_edge_tri.end())
+				continue;
+			std::size_t o = it->second;
+			double dot = tri_normals[t * 3 + 0] * tri_normals[o * 3 + 0] +
+				tri_normals[t * 3 + 1] * tri_normals[o * 3 + 1] +
+				tri_normals[t * 3 + 2] * tri_normals[o * 3 + 2];
+			if (dot < 1.0 - angular_tol)
+				continue;
+			std::size_t rt = find_root(t), ro = find_root(o);
+			if (rt != ro)
+				parent[rt] = ro;
+		}
+	}
+
+	// bucket triangles by group root
+	std::map<std::size_t, std::vector<std::size_t>> groups;
+	for (std::size_t t = 0; t < tri_cnt; t++)
+		groups[find_root(t)].push_back(t);
+
+	auto point = new Point(entities, 0.0, 0.0, 0.0);
+	auto dir_1 = new Direction(entities, 0.0, 0.0, 1.0);
+	auto dir_2 = new Direction(entities, 1.0, 0.0, 0.0);
+	auto base_csys = new Csys3D(entities, dir_1, dir_2, point);
+
+	// shared topology across all faces
+	std::map<PointKey, Vertex*> vertex_map;
+	std::map<EdgeKey, EdgeCurve*> edge_map;
+	auto get_vertex = [&](const double *p) -> Vertex* {
+		auto key = std::make_tuple(p[0], p[1], p[2]);
+		auto it = vertex_map.find(key);
+		if (it != vertex_map.end())
+			return it->second;
+		auto pt = new Point(entities, p[0], p[1], p[2]);
+		auto v = new Vertex(entities, pt);
+		vertex_map[key] = v;
+		return v;
+	};
+
+	std::vector<Face*> faces;
+	int dropped_loops = 0;
+	for (auto &grp : groups)
+	{
+		const std::vector<std::size_t> &members = grp.second;
+
+		// boundary = directed edges whose reverse is not owned by this group
+		std::map<PointKey, std::vector<std::pair<const double*, const double*>>> loop_start; // start vertex -> outgoing directed edges
+		std::size_t boundary_cnt = 0;
+		for (auto t : members)
+		{
+			for (int c = 0; c < 3; c++)
+			{
+				const double *a = vert_of(tri_ids[t], c);
+				const double *b = vert_of(tri_ids[t], (c + 1) % 3);
+				auto it = directed_edge_tri.find(make_edge_key(b, a));
+				if (it != directed_edge_tri.end() && find_root(it->second) == grp.first)
+					continue; // interior edge of this planar patch
+				loop_start[std::make_tuple(a[0], a[1], a[2])].push_back(std::make_pair(a, b));
+				boundary_cnt++;
+			}
+		}
+
+		// chain directed boundary edges into closed loops; winding is
+		// inherited from the triangles so holes stay clockwise
+		std::vector<std::vector<std::pair<const double*, const double*>>> loops;
+		while (boundary_cnt > 0)
+		{
+			// find any remaining edge to start a loop
+			std::pair<const double*, const double*> start(0, 0);
+			for (auto &kv : loop_start)
+			{
+				if (!kv.second.empty())
+				{
+					start = kv.second.back();
+					kv.second.pop_back();
+					boundary_cnt--;
+					break;
+				}
+			}
+			if (!start.first)
+				break;
+			std::vector<std::pair<const double*, const double*>> loop;
+			loop.push_back(start);
+			bool closed = false;
+			while (true)
+			{
+				const double *tail = loop.back().second;
+				if (tail[0] == start.first[0] && tail[1] == start.first[1] && tail[2] == start.first[2])
+				{
+					closed = true;
+					break;
+				}
+				auto it = loop_start.find(std::make_tuple(tail[0], tail[1], tail[2]));
+				if (it == loop_start.end() || it->second.empty())
+					break; // open chain: non-manifold or inconsistent winding
+				loop.push_back(it->second.back());
+				it->second.pop_back();
+				boundary_cnt--;
+			}
+			if (closed && loop.size() >= 3)
+				loops.push_back(loop);
+			else
+				dropped_loops++;
+		}
+		if (loops.empty())
+			continue;
+
+		// plane csys from the group normal and the first boundary edge
+		std::size_t t0 = members[0];
+		const double *n = &tri_normals[t0 * 3];
+		const double *l0a = loops[0][0].first;
+		const double *l0b = loops[0][0].second;
+		double ref[3] = { l0b[0] - l0a[0], l0b[1] - l0a[1], l0b[2] - l0a[2] };
+		// Orthonormalize ref against the normal (matches the non-merged path's csys construction)
+		double dotnr = ref[0] * n[0] + ref[1] * n[1] + ref[2] * n[2];
+		ref[0] -= dotnr * n[0];
+		ref[1] -= dotnr * n[1];
+		ref[2] -= dotnr * n[2];
+		double ref_len = sqrt(ref[0] * ref[0] + ref[1] * ref[1] + ref[2] * ref[2]);
+		if (ref_len < tol)
+		{
+			// Fallback: pick any direction orthogonal to the normal
+			double tmp[3] = { 0.0, 0.0, 1.0 };
+			if (fabs(n[2]) > 0.9)
+			{
+				tmp[0] = 0.0; tmp[1] = 1.0; tmp[2] = 0.0;
+			}
+			ref[0] = tmp[1] * n[2] - tmp[2] * n[1];
+			ref[1] = tmp[2] * n[0] - tmp[0] * n[2];
+			ref[2] = tmp[0] * n[1] - tmp[1] * n[0];
+			ref_len = sqrt(ref[0] * ref[0] + ref[1] * ref[1] + ref[2] * ref[2]);
+		}
+		auto plane_point = new Point(entities, l0a[0], l0a[1], l0a[2]);
+		auto plane_dir_1 = new Direction(entities, n[0], n[1], n[2]);
+		auto plane_dir_2 = new Direction(entities, ref[0] / ref_len, ref[1] / ref_len, ref[2] / ref_len);
+		auto plane_csys = new Csys3D(entities, plane_dir_1, plane_dir_2, plane_point);
+		auto plane = new Plane(entities, plane_csys);
+
+		std::vector<FaceBound*> face_bounds;
+		for (auto &loop : loops)
+		{
+			std::vector<OrientedEdge*> oriented_edges;
+			for (auto &de : loop)
+			{
+				double a[3] = { de.first[0], de.first[1], de.first[2] };
+				double b[3] = { de.second[0], de.second[1], de.second[2] };
+				EdgeCurve *edge_curve = 0;
+				bool edge_dir = true;
+				get_edge_from_map(a, b, edge_map, get_vertex(de.first), get_vertex(de.second), edge_curve, edge_dir, merged_edge_cnt);
+				oriented_edges.push_back(new OrientedEdge(entities, edge_curve, edge_dir));
+			}
+			face_bounds.push_back(new FaceBound(entities, new EdgeLoop(entities, oriented_edges), true));
+		}
+		faces.push_back(new Face(entities, face_bounds, plane, true));
+	}
+
+	if (dropped_loops)
+		std::cout << "Warning: dropped " << dropped_loops << " open boundary chains (non-manifold or inconsistent winding)\n";
+	std::cout << "Merged " << tri_cnt << " triangles into " << faces.size() << " planar faces\n";
 
 	// build the model
 	auto open_shell = new Shell(entities, faces);
