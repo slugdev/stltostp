@@ -74,6 +74,11 @@ ADD_TEST(
 	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_line_geometry.cmake
 )
 
+ADD_TEST(
+	NAME units_scale
+	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_units_scale.cmake
+)
+
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION "bin/")
 
 if(WIN32)
