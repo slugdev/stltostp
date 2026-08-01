@@ -53,7 +53,6 @@ ADD_TEST(
 )
 
 ADD_TEST(
-<<<<<<< HEAD
 	NAME mergeplanar_cube
 	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_mergeplanar.cmake
 )
@@ -68,10 +67,11 @@ ADD_TEST(
 	NAME mergeplanar_cat_dish
 	COMMAND stltostp cat_dish.stl cat_dish_merged.stp mergeplanar
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/test"
-=======
+)
+
+ADD_TEST(
 	NAME edge_curve_line_geometry
 	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_line_geometry.cmake
->>>>>>> origin/master
 )
 
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION "bin/")

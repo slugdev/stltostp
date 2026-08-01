@@ -182,11 +182,7 @@ int main(int arv, char* argc[])
 		else if (cur_arg == "mergeplanar")
 		{
 			mergeplanar = true;
-<<<<<<< HEAD
 			std::cout << "Merging coplanar triangles into planar faces...\n";
-=======
-			std::cout << "Planar face merging enabled\n";
-			arg_cnt++;
 		}
 		else if (cur_arg == "units" || cur_arg == "unit")
 		{
@@ -209,7 +205,6 @@ int main(int arv, char* argc[])
 			out_schema = argc[arg_cnt + 1];
 			std::cout << "Output schema set to: " << out_schema << "\n";
 			arg_cnt++;
->>>>>>> origin/master
 		}
 		else
 		{
