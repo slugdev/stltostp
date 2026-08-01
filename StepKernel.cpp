@@ -85,6 +85,24 @@ void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged
 	auto base_csys = new Csys3D(entities, dir_1, dir_2, point);
 	std::vector<Face*> faces;
 	std::map<std::tuple<double, double, double, double, double, double>, EdgeCurve*> edge_map;
+
+	// vertices are shared between triangles: edge curves are reused by the
+	// neighboring triangle, so without sharing the edges of a loop would
+	// reference different vertex entities at the same location and the
+	// resulting topology is rejected by strict readers
+	std::map<std::tuple<double, double, double>, Vertex*> vertex_map;
+	auto get_vertex = [&](const double *p) -> Vertex*
+	{
+		auto key = std::make_tuple(p[0], p[1], p[2]);
+		auto it = vertex_map.find(key);
+		if (it != vertex_map.end())
+			return it->second;
+		auto vert_point = new Point(entities, p[0], p[1], p[2]);
+		auto vert = new Vertex(entities, vert_point);
+		vertex_map[key] = vert;
+		return vert;
+	};
+
 	for (std::size_t i = 0; i < tris.size() / 9; i++)
 	{
 		double p0[3] = { tris[i * 9 + 0],tris[i * 9 + 1] ,tris[i * 9 + 2] };
@@ -133,15 +151,9 @@ void StepKernel::build_tri_body(std::vector<double> tris,double tol, int &merged
 
 		// build the face
 		// the 3 vertex locations
-		auto point1 = new Point(entities, p0[0], p0[1], p0[2]);
-		auto vert1 = new Vertex(entities, point1);
-
-		auto point2 = new Point(entities, p1[0], p1[1], p1[2]);
-		auto vert2 = new Vertex(entities, point2);
-
-		auto point3 = new Point(entities, p2[0], p2[1], p2[2]);
-		auto vert3 = new Vertex(entities, point3);
-
+		auto vert1 = get_vertex(p0);
+		auto vert2 = get_vertex(p1);
+		auto vert3 = get_vertex(p2);
 
 		EdgeCurve* edge_curve1 = 0;
 		bool edge1_dir = true;

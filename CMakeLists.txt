@@ -75,6 +75,11 @@ ADD_TEST(
 )
 
 ADD_TEST(
+	NAME vertex_sharing
+	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_vertex_sharing.cmake
+)
+
+ADD_TEST(
 	NAME units_scale
 	COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:stltostp> -DDIR=${PROJECT_SOURCE_DIR}/test -P ${PROJECT_SOURCE_DIR}/test/check_units_scale.cmake
 )
